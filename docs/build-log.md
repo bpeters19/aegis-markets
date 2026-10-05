@@ -107,3 +107,30 @@ My notes on what I built at each step, why I built it that way, what broke, and 
 **Commits:** `Add bars table, validated market data model, and idempotent ingestion`, `Add Tiingo and Alpaca market data providers with retries, pagination, and exact decimal parsing`
 
 **Things I can talk about in interviews:** Why money should never be stored as floats, what idempotency means and why data pipelines need it, how upserts handle vendor corrections, data lineage, why I designed around a provider interface (and how it paid off when Alpaca didn't work out), and how I tested retry logic without real network calls.
+
+---
+
+## Entry 5: Event-driven engine and first strategy
+**Date:** Oct 5, 2026
+
+**What I built:** The core event loop. Immutable `BarEvent` and `SignalEvent` types, a FIFO event bus where components subscribe to event types instead of calling each other directly, a historical bar feed that merges multiple symbols into one chronological stream, and a rolling `BarHistory` window that is the only data a strategy ever receives. Added a `Strategy` interface and a moving-average crossover strategy (buy when the 10-day SMA crosses above the 30-day, sell when it crosses below) with stop-loss and profit targets rounded to the penny. Built a CLI that runs strategies over the bars stored in Postgres.
+
+**Tech:** Python dataclasses (frozen, slots), collections.deque, heapq k-way merge, abstract base classes, Decimal arithmetic, pytest
+
+**Why this matters in finance:** Look-ahead bias, accidentally using future data to make a past decision, is the most common reason backtests look great and then fail with real money. Vectorized pandas backtests make it easy to do by accident. An event-driven engine processes one bar at a time, the same way a live system receives data, so the same code can eventually run backtests and live trading.
+
+**Decisions I made:**
+- Made look-ahead impossible by structure instead of relying on being careful. The engine pulls one bar from the feed, fully processes every event it causes, and only then reads the next bar. Strategies only get an immutable tuple of past bars ending at the current bar.
+- Strategies emit signals, not orders. They say what they'd like to do and where the stop and target are, but they never size positions or touch money. That's the risk engine's job.
+- Kept strategies stateless, so the same history always produces the same signals. That makes them deterministic and easy to test.
+- Rounded stops and targets to $0.01 because US stocks above $1 trade in penny increments.
+- Used Pydantic for validation at the edges of the system and lightweight frozen dataclasses inside the engine, since the event loop is the hot path.
+- Merged per-symbol series with heapq.merge (O(n log k)) since each series is already sorted, instead of re-sorting everything.
+
+**How I verified it:** Wrote tests proving a strategy never sees a bar newer than the current one, that the engine never pulls the next bar from the feed before finishing the current one (checked by wrapping the feed in a generator that records what it has released), that each strategy only sees its own symbol, and that replaying the same data always produces identical signals.
+
+**Results:** Ran the 10/30 SMA crossover over 2,500 real daily bars (10 symbols, all of 2025): 67 signals in 53 ms, about 47,000 bars per second in pure Python with exact decimal math. The first signal came Feb 18, after the 31-bar warm-up period. The output showed whipsaw during the April 2025 tariff selloff (TSLA flipped BUY/SELL/BUY/SELL in one week) and nine correlated BUY signals between May 1 and May 6, which is a concrete reason the risk engine needs exposure and position-count limits. These are signals only; no returns are measured until the backtester exists.
+
+**Commits:** `Add event-driven signal engine with look-ahead-safe bar history and SMA crossover strategy`
+
+**Things I can talk about in interviews:** What look-ahead bias is and how I made it structurally impossible and then proved it with tests, event-driven vs. vectorized backtesting, why strategies should be separated from risk and execution, k-way merging of sorted streams, and why I measured a performance baseline before optimizing.
