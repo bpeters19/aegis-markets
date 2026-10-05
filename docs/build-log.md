@@ -166,3 +166,38 @@ My notes on what I built at each step, why I built it that way, what broke, and 
 **Commits:** `Add pre-trade risk engine with position sizing, configurable limits, and reduce-only kill switch`
 
 **Things I can talk about in interviews:** How to size a position from a stop distance, why exits should never be blocked by risk limits, gap risk and why a stop-loss doesn't guarantee your max loss, how different limits interact, and why risk limits are a trade-off rather than free protection.
+
+---
+
+## Entry 7: Order management system
+**Date:** Oct 5, 2026
+
+**What I built:** An order management system between approved risk decisions and execution. Orders move through an explicit state machine (PENDING, SUBMITTED, PARTIALLY_FILLED, FILLED, CANCELLED, REJECTED) defined as a table of legal transitions, and anything else raises an error. Orders, fills, and an audit log are stored in Postgres through new Alembic migrations. Every state change writes an audit row in the same transaction as the change itself.
+
+**Tech:** PostgreSQL 18 (unique constraints, CHECK constraints, PL/pgSQL triggers, JSONB), SQLAlchemy 2.0 (savepoints, optimistic locking), Alembic, pytest
+
+**Why this matters in finance:** The OMS is the source of truth for what the system has actually done. Duplicate orders and double-counted fills are classic real-world trading bugs, and firms have to be able to reconstruct exactly what happened to every order for regulators.
+
+**Decisions I made:**
+- Idempotent orders: every order has a client_order_id. A retried submit returns the existing order instead of creating a new one, and reusing an ID with different details raises a conflict. A unique constraint backs this up, and a savepoint handles the case where two processes race to insert the same ID.
+- Client order IDs for strategy orders are built from the signal itself (strategy, symbol, action, timestamp), so replaying the same signal can never create a second order.
+- Idempotent fills: every fill carries the broker's execution_id with a unique constraint, so duplicate execution reports are ignored instead of double-counting shares.
+- The audit log is append-only at the database level. A Postgres trigger rejects UPDATE, DELETE, and TRUNCATE on order_events, so even raw SQL can't edit history.
+- Stored both occurred_at (event time, which is simulated time in a backtest) and recorded_at (when the database wrote it).
+- The average fill price is derived from the fills table instead of being updated incrementally, so rounding errors can't build up.
+- Added a version column for optimistic locking, so two processes updating the same order can't silently overwrite each other.
+- Added `alembic check` to CI so the build fails if models and migrations ever drift apart.
+
+**Problems I ran into:**
+- My script for writing the trigger migration replaced a placeholder with PowerShell's -replace, which is case-insensitive, so it also mangled the `down_revision` line. Switched to -creplace (case-sensitive).
+- Ran pytest from the repo root instead of backend, so .env and pytest.ini weren't found. Changed the config to locate .env relative to the config file itself.
+- The demo printed 08:30 for an order placed at 14:30 UTC. Postgres on Windows was returning timestamps in local time. The data was right, but I forced every database connection to UTC so the system never depends on server settings.
+- The audit log recorded the average price with 28 decimal places while the orders table stores 6. Fixed it by rounding to the column's precision before saving, so the audit log matches exactly what was stored.
+
+**How I verified it:** 17 new tests: the full lifecycle with partial fills, idempotent creates, conflicting client IDs, duplicate execution reports, overfill rejection, cancelling a partially filled order, illegal transitions, and a test that tries to UPDATE and DELETE audit rows with raw SQL and confirms Postgres refuses both. Database tests run inside a transaction that's rolled back afterward, which is necessary since the audit log can't be deleted from. 70 tests passing.
+
+**Results:** A dry run of the real Feb 19, 2025 NVDA signal: 72 shares filled in two partial fills (30 at $138.90 and 42 at $138.95) for an average of $138.929167. The retry returned the same order, the duplicate fill report was ignored, cancelling the filled order was refused, and the audit trail had exactly four events: CREATED, SUBMITTED, FILL, FILL.
+
+**Commits:** `Add order management system with state machine, idempotent orders and fills, and append-only audit log`
+
+**Things I can talk about in interviews:** Order state machines, idempotency for both orders and fills, why audit logs need to be append-only and how to enforce it at the database level, event time vs. processing time, optimistic locking, and why a trading system should never depend on the server's time zone.

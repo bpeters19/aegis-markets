@@ -160,7 +160,7 @@ class OrderManager:
             select(func.sum(FillRecord.quantity * FillRecord.price)).where(FillRecord.order_id == order.id)
         )
         order.filled_quantity = new_filled
-        order.avg_fill_price = total_value / new_filled
+        order.avg_fill_price = (total_value / new_filled).quantize(Decimal("0.000001"))
         order.status = target
         if target == OrderStatus.FILLED:
             order.filled_at = ts
