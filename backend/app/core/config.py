@@ -1,4 +1,6 @@
 from functools import lru_cache
+
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,6 +12,16 @@ class Settings(BaseSettings):
     environment: str = "development"
     api_v1_prefix: str = "/api/v1"
     database_url: str
+
+    alpaca_api_key_id: str | None = None
+    alpaca_api_secret_key: SecretStr | None = None
+    alpaca_data_url: str = "https://data.alpaca.markets"
+    alpaca_feed: str = "iex"
+    alpaca_adjustment: str = "split"
+
+    tiingo_api_key: SecretStr | None = None
+    tiingo_base_url: str = "https://api.tiingo.com"
+    tiingo_adjusted: bool = True
 
 
 @lru_cache

@@ -77,3 +77,33 @@ My notes on what I built at each step, why I built it that way, what broke, and 
 **Commits:** `Normalize line endings with .gitattributes`, `Add Alembic migrations and GitHub Actions CI with PostgreSQL 18`
 
 **Things I can talk about in interviews:** How to handle schema changes safely, what CI service containers and health checks are for, and how I separated secrets between local development, CI, and eventually production.
+
+---
+
+## Entry 4: Market data pipeline
+**Date:** Oct 5, 2026
+
+**What I built:** A `bars` table for OHLCV data with a composite primary key on symbol, timeframe, and timestamp, plus CHECK constraints that reject impossible bars at the database level. A validated `Bar` model that normalizes symbols, requires time-zone-aware timestamps and converts them to UTC, and rejects bars where the prices don't make sense (high below low, close outside the range, negative volume). A `MarketDataProvider` interface with three implementations: a fake provider for tests, a Tiingo provider for real end-of-day data, and an Alpaca provider. Idempotent ingestion using Postgres upserts in batches of 1,000, a CLI to ingest multiple symbols at once, and a `GET /api/v1/bars` endpoint.
+
+**Tech:** PostgreSQL 18 (upserts, CHECK constraints), SQLAlchemy 2.0, Alembic, Pydantic validators, httpx with mocked transports for testing, Tiingo REST API
+
+**Why this matters in finance:** Every strategy, backtest, and risk calculation downstream depends on this data being right. One bad bar can trigger a fake signal, and floating-point rounding errors add up across P&L calculations. Vendors also publish corrections, so the pipeline has to handle data changing after it's already been stored.
+
+**Decisions I made:**
+- Stored prices as `Numeric` instead of floats, and parsed the vendor's JSON straight into `Decimal` so precision is never lost between the API and the database. The API returns prices as strings for the same reason.
+- Validated data in two places: the `Bar` model rejects bad data in Python, and CHECK constraints in Postgres act as a second line of defense.
+- Made ingestion an upsert so re-running it never creates duplicates, and so vendor corrections overwrite the old values.
+- Tagged every row with its source (like `tiingo-adjusted`) and an `ingested_at` time, so I can always trace where a number came from and whether it's split/dividend adjusted.
+- Used half-open time ranges `[start, end)` everywhere so back-to-back queries never double-count a bar.
+- Bad bars from a vendor get logged and skipped instead of failing the whole batch. Bad API keys fail immediately, while rate limits and server errors retry with exponential backoff.
+- Injected the HTTP client and the sleep function into the providers, so tests run against fake responses and can check retry timing without actually waiting.
+
+**Problems I ran into:**
+- Alpaca's signup CAPTCHA kept failing, so I couldn't get API keys. Because everything goes through the provider interface, I switched to Tiingo by adding one new provider file, and nothing else in the system changed. The Alpaca provider is still in the repo and tested against a mocked API, and I'll connect it once the account works.
+- Different vendors timestamp daily bars differently (Tiingo uses midnight UTC, Alpaca uses midnight New York time). That's part of why every row records its source.
+
+**Results:** Ingested 2,500 real daily bars for 10 symbols (NVDA, AAPL, MSFT, AMD, TSLA, SPY, QQQ, META, AMZN, GOOGL) in under 2 seconds. Each symbol returned 250 bars, which matches the number of NYSE trading days in 2025. 29 tests passing in CI, including idempotency and vendor-correction tests against a real Postgres database.
+
+**Commits:** `Add bars table, validated market data model, and idempotent ingestion`, `Add Tiingo and Alpaca market data providers with retries, pagination, and exact decimal parsing`
+
+**Things I can talk about in interviews:** Why money should never be stored as floats, what idempotency means and why data pipelines need it, how upserts handle vendor corrections, data lineage, why I designed around a provider interface (and how it paid off when Alpaca didn't work out), and how I tested retry logic without real network calls.
