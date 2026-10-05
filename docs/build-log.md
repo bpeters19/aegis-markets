@@ -134,3 +134,35 @@ My notes on what I built at each step, why I built it that way, what broke, and 
 **Commits:** `Add event-driven signal engine with look-ahead-safe bar history and SMA crossover strategy`
 
 **Things I can talk about in interviews:** What look-ahead bias is and how I made it structurally impossible and then proved it with tests, event-driven vs. vectorized backtesting, why strategies should be separated from risk and execution, k-way merging of sorted streams, and why I measured a performance baseline before optimizing.
+
+---
+
+## Entry 6: Risk engine
+**Date:** Oct 5, 2026
+
+**What I built:** A pre-trade risk engine that every signal has to pass through. For BUY signals, it sizes the position from the stop distance (1% of equity at risk per trade by default), then caps that size by max position size, remaining exposure, and buying power, and records which limit was the binding one. It then runs every check: kill switch, stop-loss required and below entry, no duplicate positions, max open positions, daily loss limit, max position size, max risk per trade, max total exposure, and buying power. It returns APPROVED or REJECTED with every failed reason, not just the first. SELL signals are approved only if there is an actual position to exit. Limits are a validated config model, and the kill switch is runtime state with halt() and resume().
+
+**Tech:** Python, Decimal arithmetic, Pydantic (validated config), frozen dataclasses, pytest
+
+**Why this matters in finance:** Pre-trade risk checks are the last line of defense before an order reaches the market, and they run on every single order. Getting position sizing right is what keeps one bad trade from doing outsized damage to an account.
+
+**Decisions I made:**
+- Risk-reducing orders are never blocked. When the kill switch is on or the daily loss limit is hit, new entries are rejected but exits still go through ("reduce-only" mode). A risk system that traps you in a losing position is worse than no risk system.
+- Made evaluate() a pure function of the signal and a portfolio snapshot, with no database calls and no side effects, so it's deterministic, fast, and easy to test.
+- Supported two modes with the same checks: size the position automatically within limits, or validate an explicitly requested size and reject it if it breaks a limit.
+- Percent limits are validated to be between 0 and 1 and exposure can't exceed 100%, so a config typo can't accidentally allow leverage.
+- Collected every failed check instead of stopping at the first one, so a rejection explains everything that was wrong.
+
+**How I verified it:** 12 tests, including the exact example from my original spec (a $20,000 NVDA order on a $100,000 account is rejected because it's 20% of equity against a 10% limit), sizing by risk vs. by position cap, exposure limits, the daily loss limit, duplicate positions, and the kill switch blocking entries while still allowing exits. 53 tests passing total.
+
+**Results:** Replayed the 10/30 SMA crossover over all of 2025 for 10 symbols with a $100,000 account, by subscribing the risk engine to the event bus without changing the signal engine's code: 37 signals approved, 30 rejected (14 for max open positions, 16 SELLs with no position). The May cluster I spotted in Week 3 got handled exactly as expected: after 5 positions filled, the next 5 BUYs were rejected.
+
+**What the replay taught me:**
+- With a 5% stop, the 10% position cap always binds before the 1% risk limit, so real risk per trade was about 0.5%. Limits interact, and you have to check which one is actually doing the work.
+- The demo book didn't enforce stops. AMD was bought at $114.81 with a stop at $109.07 (planned risk $482), but it was held down to $83.64, a loss of about $2,620, more than 5x the plan. Risk sizing only works if stops are actually executed, and even real stop orders fill below the stop when a stock gaps down overnight (gap risk). The Week 5 execution simulator needs to model this honestly.
+- Limits cost upside too. NVDA was rejected on May 5 at $113.53 for max positions and was at $170 by September. Whether the limits help overall is something the backtester has to measure.
+- The replay used a demo-only book that fills instantly at the signal price, so these numbers are not performance results.
+
+**Commits:** `Add pre-trade risk engine with position sizing, configurable limits, and reduce-only kill switch`
+
+**Things I can talk about in interviews:** How to size a position from a stop distance, why exits should never be blocked by risk limits, gap risk and why a stop-loss doesn't guarantee your max loss, how different limits interact, and why risk limits are a trade-off rather than free protection.
