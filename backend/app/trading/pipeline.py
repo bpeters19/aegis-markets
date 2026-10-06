@@ -46,6 +46,8 @@ class TradingPipeline:
         limits: RiskLimits | None = None,
         costs: CostModel | None = None,
         run_id: str | None = None,
+        cash_rate: Decimal = Decimal(0),
+        trade_from: datetime | None = None,
     ) -> None:
         self.run_id = run_id or uuid.uuid4().hex[:8]
         self.bus = EventBus()
@@ -57,7 +59,8 @@ class TradingPipeline:
         self.risk = RiskEngine(limits)
         self.oms = OrderManager(session)
         self.simulator = ExecutionSimulator(costs)
-        self.portfolio = Portfolio(starting_cash)
+        self.portfolio = Portfolio(starting_cash, cash_rate=cash_rate)
+        self.trade_from = trade_from
 
         self.working: dict[str, WorkingOrder] = {}
         self.brackets: dict[str, tuple[Decimal | None, Decimal | None]] = {}
@@ -150,6 +153,9 @@ class TradingPipeline:
         return children
 
     def _on_signal(self, signal: SignalEvent) -> None:
+        if self.trade_from is not None and signal.ts < self.trade_from:
+            self.counts["warmup_signals"] += 1
+            return
         self.counts["signals"] += 1
         pending_buys = [
             (o.symbol, o.remaining, self.last_bar[o.symbol].close)

@@ -289,3 +289,39 @@ My notes on what I built at each step, why I built it that way, what broke, and 
 **Commits:** `Add performance metrics and backtest report with risk-adjusted benchmark comparison`
 
 **Things I can talk about in interviews:** How Sharpe, Sortino, Calmar, and drawdown are calculated and where each one misleads, why the risk-free rate and cash interest have to be modeled consistently, beta and alpha and why one year of alpha is noise, exposure and why a mostly-cash strategy can look good on risk metrics, and concentration risk from a single outlier trade.
+
+---
+
+## Entry 11: Out-of-sample testing
+**Date:** Oct 6, 2026
+
+**What I built:** Research tools for testing whether a strategy holds up on data it was never tuned on. A parameter sweep over 12 fast/slow window pairs ranked by Sharpe; a holdout test that picks the best pair on one period and evaluates it on a later one; and a walk-forward test that, for each year, picks parameters using only the previous three years and then trades that year. Idle cash now earns a daily interest rate, and the same rate is used as the Sharpe risk-free rate, so cash is treated consistently. Backtests warm up indicators on history before the test period but ignore signals until it starts. Ingested 2017-2024 daily data for the same 10 symbols.
+
+**Tech:** Python, argparse subcommands, PostgreSQL, the full trading pipeline running inside rolled-back transactions
+
+**Why this matters in finance:** In-sample results always look better than reality because the choices were made knowing the answer. Separating the data used to choose parameters from the data used to judge them is the core discipline of quantitative research.
+
+**Decisions I made:**
+- Selected parameters by Sharpe ratio on training data only, and never looked at test-period results when choosing.
+- Compared every result against a fixed baseline (10/30, never re-tuned) and against buy-and-hold SPY, so I could tell whether re-tuning added anything.
+- Treated cash consistently: idle cash earns the same rate that's subtracted in the Sharpe ratio, so cash contributes zero excess return either way.
+- Gave each test period a warm-up window so slow indicators like a 200-day average are ready on day one, without letting any pre-period signals create positions.
+
+**Problems I ran into:**
+- My CLI had `--symbols` accept any number of values before the subcommand, so it swallowed the command name as a symbol. Moved `--symbols` onto each subcommand so the list ends at the next option.
+
+**Results:**
+- Holdout (train 2018-2022, test 2023-2025): the in-sample winner, 20/30, had a Sharpe of 1.12 in-sample and 0.65 out-of-sample. Out-of-sample, SPY buy-and-hold returned +84.57% vs. +17.31% for the chosen parameters.
+- Walk-forward (2021-2025): the chosen parameters changed almost every year (10/200, 20/30, 20/30, 10/30, 5/100). Average Sharpe of the chosen parameters fell from 1.29 in-sample to 0.14 out-of-sample. Compounded returns were +21.38% walk-forward, +43.99% for fixed 10/30, and +93.36% for SPY buy-and-hold.
+- In 2022 the strategy returned about +0.8% while SPY lost 18.40%. Average exposure was about 18-21%.
+
+**What I learned:**
+- Optimizing this strategy's parameters is overfitting. The in-sample advantage almost entirely disappeared out of sample, and re-tuning every year did worse than never tuning.
+- The fixed 10/30 looked best out of sample, but I've been studying 2025 with it since Week 3, so choosing it now because it did well would repeat the same selection mistake. The walk-forward result is the honest one.
+- The strategy behaves like a defensive, low-exposure trend filter: much smaller drawdowns, but far lower returns than buy-and-hold in bull markets.
+- Every result is inflated by survivorship bias, since these 10 stocks were picked because they're winners today. A real test needs a point-in-time universe. The flat 2% rate also understates the roughly 5% T-bill rates of 2023-2024.
+- Conclusion: no evidence of a tradable edge in returns, some evidence of drawdown reduction, and strong evidence that parameter optimization overfits.
+
+**Commits:** `Add cash interest, warm-up aware backtests, parameter sweeps, holdout and walk-forward testing`
+
+**Things I can talk about in interviews:** In-sample vs. out-of-sample testing, walk-forward analysis, multiple-testing bias and Sharpe decay, survivorship and selection bias, parameter instability as a sign of no persistent edge, why a fixed baseline matters, and why "this strategy doesn't have an edge" is a legitimate research result.

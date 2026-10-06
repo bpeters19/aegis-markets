@@ -72,3 +72,12 @@ def test_equity_curve_and_start_of_day_equity():
     assert pf.start_of_day_equity == D("10100")
     pf.close_day()
     assert [equity for _, equity in pf.equity_curve] == [D("10100"), D("10100")]
+
+
+def test_idle_cash_earns_interest_and_books_still_balance():
+    pf = Portfolio(D("10000"), cash_rate=D("0.0252"))
+    pf.start_bar(make_bar(100, day=0))
+    pf.close_day()
+    assert pf.interest == D("1")
+    assert pf.equity == D("10001")
+    pf.check_accounting()

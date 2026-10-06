@@ -93,3 +93,11 @@ def test_entry_cancelled_when_open_gaps_below_stop(session):
     assert p.portfolio.positions == {}
     assert p.counts["gap_cancels"] == 1
     assert order_statuses(session, p) == {"ENTRY": "CANCELLED"}
+
+
+def test_signals_before_trade_from_are_ignored(session):
+    p = TradingPipeline(
+        session, [MovingAverageCrossover(2, 3)], trade_from=BASE + timedelta(days=10)
+    ).run({"AAA": bars("AAA", SETUP)})
+    assert p.counts["warmup_signals"] == 1
+    assert p.counts["orders"] == 0

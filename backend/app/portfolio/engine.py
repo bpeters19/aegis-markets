@@ -52,7 +52,7 @@ class Portfolio:
     check_accounting() verifies equity == starting cash + realized + unrealized - commissions.
     """
 
-    def __init__(self, starting_cash: Decimal) -> None:
+    def __init__(self, starting_cash: Decimal, cash_rate: Decimal = Decimal(0)) -> None:
         if starting_cash <= 0:
             raise ValueError("starting cash must be positive")
         self.starting_cash = starting_cash
@@ -60,6 +60,8 @@ class Portfolio:
         self.positions: dict[str, OpenPosition] = {}
         self.realized_pnl = Decimal(0)
         self.commissions = Decimal(0)
+        self.cash_rate = cash_rate
+        self.interest = Decimal(0)
         self.trades: list[ClosedTrade] = []
         self.equity_curve: list[tuple[date, Decimal]] = []
         self.exposure_curve: list[tuple[date, Decimal]] = []
@@ -87,6 +89,10 @@ class Portfolio:
 
     def close_day(self) -> None:
         if self._day is not None and (not self.equity_curve or self.equity_curve[-1][0] != self._day):
+            if self.cash_rate > 0 and self.cash > 0:
+                accrued = self.cash * self.cash_rate / Decimal(252)
+                self.cash += accrued
+                self.interest += accrued
             self.equity_curve.append((self._day, self.equity))
             exposure = self.market_value / self.equity if self.equity > 0 else Decimal(0)
             self.exposure_curve.append((self._day, exposure))
@@ -167,7 +173,7 @@ class Portfolio:
         return PortfolioSnapshot(cash, positions, self.start_of_day_equity)
 
     def check_accounting(self) -> None:
-        expected = self.starting_cash + self.realized_pnl + self.unrealized_pnl - self.commissions
+        expected = self.starting_cash + self.realized_pnl + self.unrealized_pnl - self.commissions + self.interest
         if abs(self.equity - expected) > ACCOUNTING_TOLERANCE:
             raise AccountingError(
                 f"equity {self.equity} != starting cash + realized + unrealized - commissions ({expected})"
