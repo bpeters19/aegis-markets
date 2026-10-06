@@ -228,3 +228,35 @@ My notes on what I built at each step, why I built it that way, what broke, and 
 **Commits:** `Add execution simulator with next-bar fills, slippage, commissions, gap-aware stops, and OCO brackets`
 
 **Things I can talk about in interviews:** Why filling at the signal bar's close is look-ahead bias, gap risk and how to model stop fills honestly, intrabar ambiguity with daily bars and why I chose the pessimistic assumption, OCO bracket orders, how slippage and commission are modeled, and the concrete AMD example showing a planned 1x risk turning into 5.4x without enforced stops.
+
+---
+
+## Entry 9: Portfolio engine and the full trading pipeline
+**Date:** Oct 6, 2026
+
+**What I built:** A portfolio engine with average-cost accounting that tracks cash, positions, realized and unrealized P&L, commissions, a daily equity curve, and every closed trade with its exit reason. Then I connected every component into one event-driven pipeline: strategy signal, risk check, OMS order, simulated fill, OMS fill record, portfolio update. When an entry fills, its stop-loss and take-profit are created as an OCO bracket through the OMS. When the strategy emits SELL, the bracket is cancelled before the exit order goes in. Backtest runs happen inside a rolled-back transaction by default, with a --persist flag to save them.
+
+**Tech:** Python, SQLAlchemy 2.0, PostgreSQL 18, event-driven architecture, pytest
+
+**Why this matters in finance:** This is the first time the system behaves like a real trading stack: every order goes through the same state machine, idempotency checks, and audit log a live system would use, and every number can be traced back to a fill.
+
+**Decisions I made:**
+- Ordered the event handlers to match a real trading day: working orders execute at the open, the strategy sees the completed bar, positions are marked to the close, and only then do new signals go through risk and become orders for the next bar.
+- Risk counts working orders, not just filled positions. Without that, nine BUYs approved on the same evening would all pass, because none of them have filled yet.
+- Cash and positions only change through apply_fill() and prices only through mark(). After every run, the portfolio checks the accounting identity (equity = starting cash + realized + unrealized - commissions) and fails if it doesn't hold.
+- After every run, portfolio positions are reconciled against the net of all OMS fills for that run, and any mismatch (a "break") fails the run. Firms reconcile against their brokers daily.
+- Fixed a flaw in my own bracket logic: stops and targets came from the signal's close, but entries fill at the next open. When the open had already gapped past the stop or the target, the system bought and sold at the same open. Now the entry is cancelled with an audit reason instead. I chose cancelling over re-anchoring the bracket to the fill price, because re-anchoring would change the risk the risk engine approved.
+
+**How I verified it:** 10 new tests. Portfolio tests cover average cost across multiple buys, partial sells, rejecting oversells without changing state, mark-to-market, reserving cash for pending orders, and the daily equity curve. Pipeline tests run against Postgres with exact dollar amounts: a same-day stop-out (-$522.93), a take-profit exit (+$984.31), working orders counting toward the position limit, and an entry cancelled because the open gapped below its stop. 94 tests passing.
+
+**Results:** Ran the full pipeline over 2025 for 10 symbols with $100,000: 2,500 bars, 87 orders, and 49 fills in 0.81 seconds, with the books balanced and positions reconciled. 22 closed trades: 9 wins and 13 losses, average win $1,113 and average loss $384. Final equity $104,590.59 (+4.59%) vs. +17.05% for buying and holding SPY.
+
+**What the results taught me:**
+- The strategy badly underperformed buy-and-hold. With at most 5 positions at about 10% each, it was never more than about half invested in a strong bull year, and the 10/30 crossover got whipsawed from February to May (11 of 22 trades were stopped out).
+- One trade (AMD, Oct 3 to Oct 6, an overnight gap through the target) made $3,282, about 65% of realized profit. A result that depends on one outlier is fragile.
+- Removing three tiny round-trip losses raised the win rate from 36% to 41% while profit changed by only $30, and the average loss went up. Win rate alone is misleading.
+- This is one strategy, one parameter set, and one year, tested in-sample. It's the first honest result, not evidence that the strategy works. No return numbers go on my resume from this.
+
+**Commits:** `Add portfolio engine and end-to-end trading pipeline with brackets, pending-order-aware risk, and OMS reconciliation`
+
+**Things I can talk about in interviews:** Average-cost accounting and the accounting identity, why pre-trade risk has to count working orders, position reconciliation and what a break is, what happens to bracket orders when the open gaps through them, path dependence in backtests, outlier concentration, and why win rate is a misleading metric.
