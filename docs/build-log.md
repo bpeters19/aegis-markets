@@ -385,3 +385,32 @@ My notes on what I built at each step, why I built it that way, what broke, and 
 **Commits:** `Add Next.js dashboard with generated API types, backtest form and metrics view`
 
 **Things I can talk about in interviews:** Contract-first development with OpenAPI-generated types, why a single API client beats scattered fetch calls, CORS, why public environment variables must never hold secrets, and why CI uses LTS versions and lockfile installs (npm ci).
+
+---
+
+## Entry 14: Dashboard charts and trade table
+**Date:** Oct 6, 2026
+
+**What I built:** Added a return chart (strategy vs. SPY from the same starting value), a drawdown chart (distance below the previous peak), an exposure chart (share of equity invested each day), and a sortable trade table with color-coded P&L to the dashboard. The chart math lives in pure functions with unit tests run by Vitest, and CI now runs those tests on every push.
+
+**Tech:** Recharts, Vitest, React, TypeScript
+
+**Why this matters in finance:** An equity curve, an underwater (drawdown) chart, an exposure chart, and a trade blotter are the standard views for reviewing a strategy. The drawdown chart is usually the first thing a risk manager looks at, because it shows the pain, not just the final number.
+
+**Decisions I made:**
+- Kept the chart math (returns, drawdowns, exposure) in pure functions separate from the chart components so it could be tested. The drawdown test uses the same 100, 120, 90, 110, 130 example as my backend test, so both sides use the same definition.
+- Turned off chart animations, since animating up to 2,500 points per line made the page slow.
+- Had the dashboard send capital, cash rate, and benchmark explicitly instead of relying on server defaults, so every request states its assumptions.
+
+**Problems I ran into:**
+- The Part B dashboard code had never actually been written to disk. The earlier CI run passed because it built Next.js's default page. I found it when the Part C files failed to write to missing folders, then wrote the missing files and verified the folder contents before moving on. Lesson: check that the files exist, not just that CI is green.
+- Running `npm audit fix --force` downgraded the ESLint config two major versions behind Next.js to silence a warning. I restored package.json and package-lock.json from Git and evaluated the remaining advisory instead: it's in development tooling that never ships to the browser. Turned on Dependabot to handle real fixes.
+- The production build failed because the generated request type made fields with server-side defaults required. Fixed it by sending those values explicitly.
+- The chart's month-only date labels put events in the wrong month (SPY's April 8 low appeared under March), so I switched to full dates.
+- Deleted 31 fake bars from an early test that were showing up as a "DEMO" symbol. Every bar stores its source, so the cleanup only touched fake data.
+
+**How I verified it:** 3 Vitest tests for the chart math, lint, a type-checked production build, and a manual check that the dashboard numbers match the API exactly for the 2025 backtest (+4.82% vs. +17.05% for SPY, Sharpe 0.54, max drawdown -3.74%, 29 trades).
+
+**Commits:** `Add return, drawdown and exposure charts and sortable trade table to the dashboard`
+
+**Things I can talk about in interviews:** Why drawdown charts matter more than return charts for risk, separating pure calculation from rendering for testability, how I handled dependency vulnerabilities without breaking the toolchain, and catching that CI was green while the code I thought existed didn't.
