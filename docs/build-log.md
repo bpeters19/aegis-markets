@@ -260,3 +260,32 @@ My notes on what I built at each step, why I built it that way, what broke, and 
 **Commits:** `Add portfolio engine and end-to-end trading pipeline with brackets, pending-order-aware risk, and OMS reconciliation`
 
 **Things I can talk about in interviews:** Average-cost accounting and the accounting identity, why pre-trade risk has to count working orders, position reconciliation and what a break is, what happens to bracket orders when the open gaps through them, path dependence in backtests, outlier concentration, and why win rate is a misleading metric.
+
+---
+
+## Entry 10: Performance metrics and benchmark comparison
+**Date:** Oct 6, 2026
+
+**What I built:** A metrics module and backtest report. From the equity curve it computes total return, CAGR, annualized volatility, Sharpe and Sortino ratios (with a configurable risk-free rate), max drawdown with peak, trough, recovery date and length, and the Calmar ratio. Against a buy-and-hold benchmark it computes beta, correlation, and annualized alpha. From the trade list it computes win rate, payoff ratio, profit factor, expectancy, average holding period, and the share of profit from the single best trade. The portfolio now records daily exposure so the report can show how much of the time the strategy was actually invested.
+
+**Tech:** Python statistics module, Decimal for money and float for statistics, pytest
+
+**Why this matters in finance:** Return alone says nothing about the risk taken to get it. Every quant interview expects you to know Sharpe, Sortino, drawdown, and beta, and also where each one misleads.
+
+**Decisions I made:**
+- Kept money in Decimal but computed statistics in float. Accounting has to be exact to the cent, while square roots and correlations are estimates anyway, and Decimal can't do most of that math.
+- Wrote every formula in plain Python instead of using pandas, so each metric is a few lines I can explain, and tested them against hand-computed values (for example, returns of [0.02, 0.00] give a Sharpe of 11.225).
+- Undefined metrics, like a Sharpe ratio with zero volatility or a profit factor with no losing trades, return n/a instead of a misleading number.
+- Added a best-trade-share metric after seeing one trade carry my Week 5 results. It can exceed 100%, which would mean the strategy lost money on everything except its best trade.
+
+**Results (2025, 10 symbols, SMA 10/30, $100,000):**
+- With a 0% risk-free rate: Sharpe 0.93 vs. 0.91 for SPY buy-and-hold, Sortino 2.10 vs. 1.38, max drawdown -2.70% vs. -18.76%, Calmar 1.72 vs. 0.92. Beta 0.06, correlation 0.23.
+- Average exposure was only 13.36%. The strategy sat in cash about 87% of the time, which explains the low volatility, the small drawdown, and the near-zero beta.
+- With a 4% risk-free rate, Sharpe drops to 0.13 (SPY: 0.71). But that comparison is unfair to the strategy: it charges a 4% hurdle while my simulation credits zero interest on idle cash, which a real account would have earned. An honest comparison needs cash interest modeled too.
+- The best single trade (AMD) was 65.34% of net profit from closed trades.
+
+**What I learned:** The same strategy looks competitive or nearly worthless depending on one assumption about the risk-free rate, and the honest answer depends on modeling cash consistently. Low exposure makes risk ratios look good without the strategy being skilled. One year in-sample with an outlier trade isn't evidence of an edge. No return or Sharpe numbers go on my resume from this run.
+
+**Commits:** `Add performance metrics and backtest report with risk-adjusted benchmark comparison`
+
+**Things I can talk about in interviews:** How Sharpe, Sortino, Calmar, and drawdown are calculated and where each one misleads, why the risk-free rate and cash interest have to be modeled consistently, beta and alpha and why one year of alpha is noise, exposure and why a mostly-cash strategy can look good on risk metrics, and concentration risk from a single outlier trade.
