@@ -355,3 +355,33 @@ My notes on what I built at each step, why I built it that way, what broke, and 
 **Commits:** `Add backtest service and API endpoints for the dashboard`
 
 **Things I can talk about in interviews:** Service layers vs. HTTP handlers, request validation and why limits protect a server, CORS and why browsers enforce it, synchronous endpoints vs. job queues for long-running work, and why the same backtest can give different results depending on available warm-up history.
+
+---
+
+## Entry 13: Next.js dashboard
+**Date:** Oct 6, 2026
+
+**What I built:** A Next.js and TypeScript dashboard in a frontend folder. It loads the symbols stored in the database as clickable chips, runs a backtest from a form (symbols, dates, fast and slow windows) through the backtest API, and shows summary cards, a full metrics table against SPY, and trade statistics. Added a frontend job to CI that installs dependencies, lints, and runs a production build on every push.
+
+**Tech:** Next.js (App Router), React, TypeScript, Tailwind CSS, openapi-typescript, GitHub Actions
+
+**Why this matters in finance:** Trading desks run on internal web dashboards, usually React and TypeScript on top of Python or Java services. Keeping the frontend and backend in sync is a real problem on those teams.
+
+**Decisions I made:**
+- Generated the frontend's TypeScript types from the backend's OpenAPI schema instead of writing them by hand (contract-first). If a backend field changes and I regenerate, every frontend line using the old name fails to compile.
+- Committed the generated types so CI can build the frontend without a running backend.
+- Routed every request through one small API client that handles the base URL, JSON, and errors, including turning FastAPI's validation errors into readable messages. Components never call fetch directly.
+- Kept money as strings from the API until the moment it's formatted for display, so all math stays in the backend in exact decimals.
+- Read the API URL from NEXT_PUBLIC_API_URL so the same code works locally and when deployed. Nothing secret ever goes in a NEXT_PUBLIC variable, since those are visible in the browser.
+- Used Node 24 LTS in CI even though I have Node 25 locally, since LTS versions are what production uses.
+
+**Problems I ran into:**
+- Ran npm from the repo root instead of the frontend folder. Each tool runs from the folder with its own config: pytest and alembic from backend, npm from frontend, git from the root.
+- My .env.local file didn't get created at first. The app still worked because the API client falls back to localhost, but I added it so the setup is explicit.
+- create-next-app generated a generic README, so I replaced it with one specific to this dashboard.
+
+**How I verified it:** Ran a 2025 backtest from the dashboard, tested a bad request (fast window longer than slow) to confirm the backend's validation message shows in the UI, and ran lint and the production build, which also type-checks everything. CI now runs a backend job and a frontend job.
+
+**Commits:** `Add Next.js dashboard with generated API types, backtest form and metrics view`
+
+**Things I can talk about in interviews:** Contract-first development with OpenAPI-generated types, why a single API client beats scattered fetch calls, CORS, why public environment variables must never hold secrets, and why CI uses LTS versions and lockfile installs (npm ci).
