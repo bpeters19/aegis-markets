@@ -201,3 +201,30 @@ My notes on what I built at each step, why I built it that way, what broke, and 
 **Commits:** `Add order management system with state machine, idempotent orders and fills, and append-only audit log`
 
 **Things I can talk about in interviews:** Order state machines, idempotency for both orders and fills, why audit logs need to be append-only and how to enforce it at the database level, event time vs. processing time, optimistic locking, and why a trading system should never depend on the server's time zone.
+
+---
+
+## Entry 8: Execution simulator
+**Date:** Oct 6, 2026
+
+**What I built:** A stateless execution simulator that turns working orders into fills one bar at a time. Market orders fill at the open plus slippage and are capped at 10% of bar volume, so a large order fills partially across several bars. Sell stops fill at the open when the price gaps through them, or at the stop price when it only touches them during the bar. Take-profit limit orders fill at the limit or better with no slippage. Stops and targets can be linked as an OCO (one-cancels-other) bracket. Commission is per share with a per-order minimum, and slipped prices round against the trader.
+
+**Tech:** Python, Decimal arithmetic with explicit rounding modes, Pydantic (validated cost model), frozen dataclasses, pytest
+
+**Why this matters in finance:** A backtest is only as honest as its fill assumptions. The usual shortcuts (filling at the signal bar's close, ignoring costs, assuming stops always fill at the stop price) all make results look better than reality. Gap risk in particular means a stop-loss doesn't guarantee your maximum loss.
+
+**Decisions I made:**
+- An order can only execute on bars that start at or after it was submitted. Orders from a signal are submitted at the end of the signal bar, so the earliest fill is the next bar's open. Passing an order to an earlier bar raises an error, which is look-ahead protection at the execution layer.
+- Bracket stops and targets attach when the entry fills at the open, so they can trigger later in that same bar.
+- When a stop and a target could both have triggered inside one daily bar, I assume the stop happened first, unless the open gapped through one of them. Daily bars don't show the order of prices within the day, so I picked the pessimistic assumption on purpose.
+- Slipped buy prices round up and sell prices round down, so rounding never flatters results.
+- Execution IDs are deterministic (order ID plus bar time), so replays produce identical IDs and the OMS duplicate-fill protection works for simulated fills.
+- Kept the simulator pure with no database or hidden state, so it's deterministic and fully unit tested.
+
+**How I verified it:** 14 new tests covering market fills with slippage and commission, rounding direction, the look-ahead guard, intrabar stops, gap-through stops, limit fills with and without gaps, OCO priority on ambiguous bars and on gap-ups, sibling cancellation, partial fills on thin volume, and brackets triggering on the entry bar. 84 tests passing.
+
+**Results:** Replayed the real Mar 25, 2025 AMD signal (84 shares, stop $109.07, target $126.29). The entry filled at the next open, $114.17 including slippage, instead of the $114.81 signal close. AMD dropped to $108.68 the same day, so the bracket stop filled at $109.01. Net loss was $435.44 including $2 in commissions, 0.90x the $482.16 planned risk. In my Week 4 replay, with no stop enforcement, the same trade lost about $2,618, roughly 5.4x the plan. AMD closed at $110.19 that day, above the stop, so a close-based exit rule would have stayed in while AMD fell to $83.64 over the next two weeks.
+
+**Commits:** `Add execution simulator with next-bar fills, slippage, commissions, gap-aware stops, and OCO brackets`
+
+**Things I can talk about in interviews:** Why filling at the signal bar's close is look-ahead bias, gap risk and how to model stop fills honestly, intrabar ambiguity with daily bars and why I chose the pessimistic assumption, OCO bracket orders, how slippage and commission are modeled, and the concrete AMD example showing a planned 1x risk turning into 5.4x without enforced stops.
