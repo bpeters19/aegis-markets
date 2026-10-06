@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     tiingo_base_url: str = "https://api.tiingo.com"
     tiingo_adjusted: bool = True
 
+    cors_origins: list[str] = ["http://localhost:3000"]
+
 
 @lru_cache
 def get_settings() -> Settings:

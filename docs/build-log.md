@@ -325,3 +325,33 @@ My notes on what I built at each step, why I built it that way, what broke, and 
 **Commits:** `Add cash interest, warm-up aware backtests, parameter sweeps, holdout and walk-forward testing`
 
 **Things I can talk about in interviews:** In-sample vs. out-of-sample testing, walk-forward analysis, multiple-testing bias and Sharpe decay, survivorship and selection bias, parameter instability as a sign of no persistent edge, why a fixed baseline matters, and why "this strategy doesn't have an edge" is a legitimate research result.
+
+---
+
+## Entry 12: Backtest API
+**Date:** Oct 6, 2026
+
+**What I built:** A backtest service plus two API endpoints for the upcoming dashboard. GET /api/v1/symbols lists every stored symbol with its bar count and date range. POST /api/v1/backtests runs the full pipeline for any set of symbols, dates, moving-average windows, starting capital, and cash rate, and returns the strategy and benchmark metrics, beta, correlation and alpha, trade statistics, the daily equity curve with benchmark and exposure, every closed trade, and the pipeline's counters. Added CORS so the dashboard on localhost:3000 can call the API.
+
+**Tech:** FastAPI, Pydantic request and response models, SQLAlchemy, CORS middleware, pytest
+
+**Why this matters in finance:** Research and trading tools are usually split into a backend that does the computation and a frontend that displays it. A clean, validated API between them means the dashboard, scripts, or other services can all reuse the same backtest logic.
+
+**Decisions I made:**
+- Moved the backtest logic into a service layer that returns a plain result object, so the API, a CLI, or a background worker can all use it without depending on HTTP.
+- Validated every request before doing any work: the fast window must be shorter than the slow one, start must be before end, at most 10 symbols, and at most 10 years. The caps also keep one request from tying up the server.
+- Sent money as strings in JSON and ratios as numbers, since JSON numbers are floats.
+- Undefined metrics come back as null instead of a fake number, for example a Sharpe ratio with zero volatility.
+- Kept the endpoint synchronous for now since a year of data runs in about a second. Long research jobs would need a job queue and a background worker later.
+- Read allowed CORS origins from settings instead of hardcoding them.
+
+**Problems I ran into:**
+- My first test request returned a 422 because the interactive docs pre-fill example values. Learned to read the response body, which says exactly which field failed and why.
+
+**How I verified it:** 5 new tests: request validation for bad windows, reversed dates, and too many symbols, plus integration tests that store fake bars, list them through /symbols, and run a full backtest through the API. A rising fake price series with no crossovers gives flat equity, a null Sharpe ratio, and a positive buy-and-hold benchmark. 110 tests passing.
+
+**Results:** A 2025 backtest of 10 symbols through the API returned 29 trades, +4.82% vs. +17.05% for SPY, Sharpe 0.54 vs. 0.81 (risk-free rate 2%), beta 0.07. This differs from my Week 6 run (22 trades) because the database now has data back to 2017, so the strategy warms up on 2024 bars and can trade from January 2 instead of losing six weeks to warm-up. The best single trade was 91% of net closed-trade profit.
+
+**Commits:** `Add backtest service and API endpoints for the dashboard`
+
+**Things I can talk about in interviews:** Service layers vs. HTTP handlers, request validation and why limits protect a server, CORS and why browsers enforce it, synchronous endpoints vs. job queues for long-running work, and why the same backtest can give different results depending on available warm-up history.
