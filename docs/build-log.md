@@ -414,3 +414,33 @@ My notes on what I built at each step, why I built it that way, what broke, and 
 **Commits:** `Add return, drawdown and exposure charts and sortable trade table to the dashboard`
 
 **Things I can talk about in interviews:** Why drawdown charts matter more than return charts for risk, separating pure calculation from rendering for testability, how I handled dependency vulnerabilities without breaking the toolchain, and catching that CI was green while the code I thought existed didn't.
+
+---
+
+## Entry 15: Research foundations
+**Date:** Oct 9, 2026
+
+**What I built:** The infrastructure for looking for a real trading edge without fooling myself. A 16-ETF research universe covering US and international stocks, real estate, Treasuries of three maturities, corporate and inflation-protected bonds, gold, silver, commodities, and the US dollar, with history back to 2007. A data quality report that checks every symbol against SPY's trading calendar for missing or extra days and flags any single-day move above 20%. A locked holdout: research tools refuse to touch data from 2023-01-01 onward unless I unlock it with a written reason, and every unlock is logged to docs/research/holdout-log.md. A hypothesis log where every strategy idea, its variants, and its success criteria get written down before testing.
+
+**Tech:** Python, PostgreSQL, Tiingo API, pytest (tmp_path and monkeypatch)
+
+**Why this matters in finance:** My Week 6 results showed parameter tuning overfit badly. Before searching for a profitable strategy, I needed measurements I could trust: a universe without hindsight bias, clean data, and a final test period I can't accidentally tune on.
+
+**Decisions I made:**
+- Switched from 10 hand-picked mega-cap stocks to broad asset-class ETFs. That removes most single-company survivorship bias and gives strategies like trend following assets that actually behave differently from each other.
+- Started the data in 2007 so every test includes the 2008 financial crisis, the 2020 crash, and the 2022 bear market.
+- Locked 2023 onward as the final test period, enforced in code instead of relying on willpower. I'm being honest that I already saw how markets behaved in 2023-2025, so the lock can't erase that, but it stops me from tuning these strategies on it.
+- Pre-registering hypotheses before testing them, with a fixed small number of variants and default success criteria, to keep the multiple-testing problem under control. Failed ideas stay in the file.
+- The quality report flags big moves for review instead of treating them as errors, since real markets do make huge moves.
+
+**Problems I ran into:**
+- The first ingestion run got interrupted with Ctrl+C partway through because it looked stuck (no output while each symbol saved). Since each symbol commits separately, the finished ones were kept and the interrupted one rolled back cleanly, so I just re-ran the remaining 12.
+- Opened a new terminal and pytest wasn't found because the virtual environment wasn't active.
+
+**How I verified it:** 4 new tests for the holdout lock, including one that redirects the log to a temporary folder so tests never write to my real docs. Confirmed the research CLI refuses a run that reaches past the lock date. 114 backend tests passing.
+
+**Results:** Ingested 78,500 bars across 16 ETFs (2007 to Oct 2026). Zero missing and zero off-calendar days for every symbol. Two moves were flagged and both checked out as real: SLV fell 28.5% on Jan 30, 2026 (a historic silver crash after a record high the day before), and EEM rose 22.8% on Oct 13, 2008, the same day SPY had its biggest rally of the financial crisis.
+
+**Commits:** `Add ETF research universe, data quality report, locked holdout guard and hypothesis log`
+
+**Things I can talk about in interviews:** How I avoid overfitting (a locked holdout enforced in code, an unlock log, and pre-registered hypotheses), survivorship bias and why I moved to asset-class ETFs, data quality checks against a trading calendar, and why an extreme price move needs to be investigated rather than automatically deleted.
