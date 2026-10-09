@@ -1,0 +1,100 @@
+{
+  "hypothesis_id": "H1",
+  "title": "Time-series momentum across asset classes",
+  "phase": "locked",
+  "generated_at": "2026-10-09 16:53 UTC",
+  "commit": "73a76d624228",
+  "data_hash": "295de06c74c1",
+  "config_hash": "ef3096ca90c3",
+  "registered_config_hash": "ef3096ca90c3",
+  "holdout_unlocks": 1,
+  "run_ids": {
+    "12-month": "937349a9"
+  },
+  "period_start": "2023-01-01",
+  "period_end": "2026-10-09",
+  "universe": [
+    "SPY",
+    "QQQ",
+    "IWM",
+    "EFA",
+    "EEM",
+    "VNQ",
+    "TLT",
+    "IEF",
+    "SHY",
+    "LQD",
+    "HYG",
+    "TIP",
+    "GLD",
+    "SLV",
+    "DBC",
+    "UUP"
+  ],
+  "benchmark_name": "SPY",
+  "cash_rate": "0.02",
+  "strategy": {
+    "total_return": 0.4794124984626471,
+    "cagr": 0.11008732077112615,
+    "volatility": 0.08627108903043099,
+    "sharpe": 1.022330641867962,
+    "sortino": 1.3817850461982715,
+    "drawdown": {
+      "max_drawdown": -0.09731409957211667,
+      "peak": "2026-01-29",
+      "trough": "2026-03-26",
+      "recovered": "2026-05-13",
+      "duration_days": 72
+    },
+    "calmar": 1.131257662098015
+  },
+  "benchmark": {
+    "total_return": 1.111153634124448,
+    "cagr": 0.22050236074759755,
+    "volatility": 0.14900067794570507,
+    "sharpe": 1.2776844614379268,
+    "sortino": 1.9136136183035204,
+    "drawdown": {
+      "max_drawdown": -0.18755388197358713,
+      "peak": "2025-02-19",
+      "trough": "2025-04-08",
+      "recovered": "2025-06-26",
+      "duration_days": 88
+    },
+    "calmar": 1.1756747363866906
+  },
+  "correlation": 0.6650162611253349,
+  "average_exposure": 0.8851719935315325,
+  "closed_trades": 25,
+  "robustness": {},
+  "subperiods": [],
+  "best_trade_share": 1.0960865626127885,
+  "top5_trade_share": 2.444907669983722,
+  "criteria": [
+    {
+      "group": "return",
+      "name": "Sharpe ratio higher than benchmark",
+      "measured": "1.02 vs 1.28",
+      "passed": false
+    },
+    {
+      "group": "return",
+      "name": "Sharpe within 0.10 of benchmark and max drawdown under 50% of benchmark's",
+      "measured": "Sharpe 1.02 vs 1.28, drawdown -9.73% vs -18.76%",
+      "passed": false
+    },
+    {
+      "group": "return",
+      "name": "Correlation below 0.3 and Sharpe above 0.5",
+      "measured": "correlation 0.67, Sharpe 1.02",
+      "passed": false
+    },
+    {
+      "group": "robustness",
+      "name": "Best trade under 25% of net profit",
+      "measured": "109.61%",
+      "passed": false
+    }
+  ],
+  "passed": false
+}

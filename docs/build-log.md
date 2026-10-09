@@ -509,3 +509,34 @@ My notes on what I built at each step, why I built it that way, what broke, and 
 **Commits:** `Add standardized results template and pre-register H1: time-series momentum`, `Add H1 research configuration and record its hash (pre-registration, before any H1 run)`, `Add time-series momentum strategy with first-trading-day monthly evaluation`, `Add hypothesis evaluator, fingerprints and results report generator`, `Record H1 development result`
 
 **Things I can talk about in interviews:** Pre-registration and why it prevents overfitting, content hashing for reproducible research, separating judgment logic from documentation, implementing monthly rules in an event-driven system without look-ahead, time-series momentum and why it works as a diversifier, and how I handled an ambiguous rule without letting results influence it.
+
+---
+
+## Entry 18: H1 locked-period test
+**Date:** Oct 9, 2026
+
+**What I built:** A one-time locked-period mode for the evaluator. It refuses to run unless the hypothesis passed development, the code is committed (with no override), a reason is given, and no locked result exists yet. The holdout unlock is logged before the run starts, so a crash still counts as an unlock. It runs only the primary variant from the lock date through the latest data and judges it with the criteria I clarified before running it.
+
+**Tech:** Python, pytest, the existing evaluator and fingerprinting
+
+**Why this matters in finance:** A strategy that only works on the data it was developed on is worthless. The locked test is the closest a backtest gets to the future, and making it a true one-shot is what keeps it honest.
+
+**Decisions I made:**
+- Made the locked run impossible to repeat by refusing if a locked result already exists. The first result is final.
+- Logged the unlock before running, not after, so the count reflects every time the data was touched.
+- Did not allow --allow-dirty for the locked phase.
+
+**How I verified it:** 3 new tests for locked-period judging. 147 tests passing.
+
+**Results:** H1 failed its locked test (Jan 2023 to Oct 2026). CAGR 11.0% vs 22.1% for SPY, Sharpe 1.02 vs 1.28, max drawdown -9.73% vs -18.76%, correlation to SPY 0.67 (up from 0.38 in development), 25 closed trades. It failed all three return tests, missing the drawdown test narrowly (51.9% of SPY's drawdown against a 50% limit). It also failed the concentration check, though that was distorted because most profit sat in open positions.
+
+**What I learned:**
+- The process worked. H1 passed development and would have looked like a green light without the locked test.
+- In a strong bull market, a diversified trend follower mostly ends up long stocks, so its correlation jumped and it stopped acting like a diversifier.
+- My concentration metric only looked at closed trades, which breaks down for long-holding strategies. That's a lesson for the next hypothesis, not a reason to change H1's result.
+- Comparing a diversified strategy to 100% stocks during a bull market mostly measures the bull market. Future hypotheses should pre-register a benchmark that fits the strategy.
+- Following the pre-registration, H1 is not adjusted and does not move to paper trading.
+
+**Commits:** `Add one-time locked-period evaluation with logged holdout unlock`, `Record H1 locked-period result: FAIL`
+
+**Things I can talk about in interviews:** What a locked holdout is and how I enforced it in code, why a strategy can pass development and fail out-of-sample, regime dependence of trend following, how I spotted a flaw in my own metric without using it to change the result, and why a documented negative result is worth more than an unverifiable positive one.
