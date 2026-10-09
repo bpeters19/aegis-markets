@@ -477,3 +477,35 @@ My notes on what I built at each step, why I built it that way, what broke, and 
 **Commits:** `Add volatility-targeted position sizing with rolling volatility estimates`, `Fix backtest assumptions text and add sizing dev log entry`
 
 **Things I can talk about in interviews:** Inverse-volatility sizing and risk parity, why sizing can't create an edge, how backward-looking volatility estimates fail during jumps like silver's 2026 crash, and how stacked limits can quietly cancel out a sizing change.
+
+---
+
+## Entry 17: First pre-registered hypothesis (H1) and the research pipeline
+**Date:** Oct 9, 2026
+
+**What I built:** A full pre-registered research workflow. A standardized results template for every hypothesis. A locked code configuration for H1 (universe, variants, periods, limits, costs, rates, and success criteria as numbers) with a SHA-256 content hash recorded in the hypothesis file before any run. A time-series momentum strategy that evaluates on the first trading day of each month without look-ahead. An evaluator that runs the primary and robustness variants, slices sub-period Sharpe ratios for the strategy and SPY from the same equity curve, computes concentration, and decides PASS or FAIL in one tested function. A report generator that writes the results as Markdown and JSON with the commit hash, data hash, config hash, run IDs, and holdout unlock count. The evaluator refuses to run if the config hash doesn't match the pre-registration, if the working tree has uncommitted changes, or if the run would touch locked data.
+
+**Tech:** Python dataclasses, SHA-256 content hashing, canonical JSON, subprocess (git), regex, pytest
+
+**Why this matters in finance:** Research results are only trustworthy if you can prove what was decided before the data was seen, and reproduce exactly what produced each number. This is the same discipline quant teams use to keep from fooling themselves with backtests.
+
+**Decisions I made:**
+- Proposed a standardized results template so every hypothesis gets judged the same way, then made the code generate it so numbers are never copied by hand.
+- Kept PASS/FAIL logic out of the documentation entirely. The criteria live in the config as thresholds, one function applies them, and the report only displays the outcome.
+- Fingerprinted data and config by content, not by labels: the data hash changes if any bar is corrected, and the config hash changes if any setting changes.
+- Picked the 12-month lookback as the primary variant in advance (the standard in the published research), with 3- and 6-month as robustness checks that couldn't replace it.
+- Reported top-5 trade concentration without judging it, since adding a threshold after writing the hypothesis would have changed the rules.
+- Committed the H1 hypothesis, config, and hash before writing the strategy or the evaluator, so Git history shows the rules came first.
+
+**Problems I ran into:**
+- The original wording for judging the locked period was ambiguous. I clarified it after seeing the development result but before running any locked data, and recorded the timing honestly in the hypothesis file.
+
+**How I verified it:** 22 new tests across the config, strategy, and evaluator, including tests that the H1 config can't reach locked data, that the strategy only acts on the first trading day of a month, that zero return counts as flat, that every path to PASS and FAIL behaves correctly, and that the data hash changes when a single price changes. 144 tests passing.
+
+**Results:** H1 passed development (2008-2022, 16 ETFs, 2% cash and risk-free rate). Sharpe 0.40 vs 0.41 for SPY, max drawdown -9.35% vs -51.88%, volatility 5.2% vs 20.8%, average exposure 81.6%, correlation to SPY 0.38, 133 closed trades. The 3- and 6-month variants had Sharpe ratios of 0.31 and 0.41. Sub-period Sharpe ratios were 0.57, 0.51, and 0.13 (SPY: 0.12, 1.12, 0.43). The best trade was 14% of profit and the top 5 were 43%.
+
+**What I learned:** H1 earned about the same return per unit of risk as SPY with a far smaller drawdown, and it did best in 2008-2012 when stocks struggled. That makes it a diversifier, not a market-beater. It's also weakening in recent years. The locked 2023-onward test is still ahead, and a strong bull market is a tough test for a defensive strategy.
+
+**Commits:** `Add standardized results template and pre-register H1: time-series momentum`, `Add H1 research configuration and record its hash (pre-registration, before any H1 run)`, `Add time-series momentum strategy with first-trading-day monthly evaluation`, `Add hypothesis evaluator, fingerprints and results report generator`, `Record H1 development result`
+
+**Things I can talk about in interviews:** Pre-registration and why it prevents overfitting, content hashing for reproducible research, separating judgment logic from documentation, implementing monthly rules in an event-driven system without look-ahead, time-series momentum and why it works as a diversifier, and how I handled an ambiguous rule without letting results influence it.

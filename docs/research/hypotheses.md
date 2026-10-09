@@ -61,6 +61,8 @@ Out-of-sample, after costs, a strategy must beat at least one of these to be wor
 - **If it fails:** recorded here, and the next hypothesis starts from scratch. The parameters do not get adjusted to make H1 pass.
 - **Known limitations, stated in advance:** positions are sized at entry and not rebalanced until exit; when the exposure cap binds, symbols processed first in a day get the capital; flat 2% rate instead of historical T-bill rates; the ETF list was chosen in 2026, so a milder form of selection bias remains; HYG and UUP lack a full 12 months of history at the start of 2008, so they join later.
 - **Config hash at pre-registration:** `ef3096ca90c3` (backend/app/research/hypotheses/h1.py)
-- **Development result:** (to be filled in)
+- **Development result:** PASS. [Full report](results/H1-development.md) | commit `5c3b6e0b2972` | data `ad3e31c528ae` | config `ef3096ca90c3`
+- **Development reason:** Passed on the drawdown test: Sharpe 0.40 vs 0.41 for SPY with a max drawdown of -9.35% vs -51.88%. Both robustness lookbacks and all three sub-periods were positive, and the best trade was 14% of profit. It did not beat SPY's Sharpe and its CAGR was about half of SPY's, so the edge is lower risk, not higher returns. The 2018-2022 Sharpe (0.13) was much weaker than the earlier periods, and the top 5 trades were 43% of profit. Neither was a pre-registered criterion, but I'm watching both.
+- **Locked-period judging (clarified 2026-10-09, after the development result and before any locked data was run):** the original text says the locked run is judged "by the same criteria against SPY." Since only the primary variant runs on the locked period, it is judged by the three return tests (at least one must pass) and the best-trade concentration check. The robustness lookbacks and sub-periods are development checks and are not re-run.
 - **Locked-period result:** (to be filled in)
 - **Decision:** (to be filled in)

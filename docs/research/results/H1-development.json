@@ -1,0 +1,133 @@
+{
+  "hypothesis_id": "H1",
+  "title": "Time-series momentum across asset classes",
+  "phase": "development",
+  "generated_at": "2026-10-09 15:12 UTC",
+  "commit": "5c3b6e0b2972",
+  "data_hash": "ad3e31c528ae",
+  "config_hash": "ef3096ca90c3",
+  "registered_config_hash": "ef3096ca90c3",
+  "holdout_unlocks": 0,
+  "run_ids": {
+    "12-month": "0e2181d1",
+    "3-month": "88a9c0e0",
+    "6-month": "136dc6d7"
+  },
+  "period_start": "2008-01-01",
+  "period_end": "2023-01-01",
+  "universe": [
+    "SPY",
+    "QQQ",
+    "IWM",
+    "EFA",
+    "EEM",
+    "VNQ",
+    "TLT",
+    "IEF",
+    "SHY",
+    "LQD",
+    "HYG",
+    "TIP",
+    "GLD",
+    "SLV",
+    "DBC",
+    "UUP"
+  ],
+  "benchmark_name": "SPY",
+  "cash_rate": "0.02",
+  "strategy": {
+    "total_return": 0.8072320978673386,
+    "cagr": 0.04027430514833563,
+    "volatility": 0.05234406162723996,
+    "sharpe": 0.3984892035301296,
+    "sortino": 0.541687746754221,
+    "drawdown": {
+      "max_drawdown": -0.09351932235796534,
+      "peak": "2018-10-01",
+      "trough": "2018-12-24",
+      "recovered": "2020-01-03",
+      "duration_days": 316
+    },
+    "calmar": 0.43065223456364515
+  },
+  "benchmark": {
+    "total_return": 2.5059465530083886,
+    "cagr": 0.08729953253485956,
+    "volatility": 0.20747865072197266,
+    "sharpe": 0.41092870191756253,
+    "sortino": 0.5747499440337847,
+    "drawdown": {
+      "max_drawdown": -0.5188279315280941,
+      "peak": "2008-01-02",
+      "trough": "2009-03-09",
+      "recovered": "2011-04-27",
+      "duration_days": 836
+    },
+    "calmar": 0.16826297743403654
+  },
+  "correlation": 0.3777186254894833,
+  "average_exposure": 0.8160996439497439,
+  "closed_trades": 133,
+  "robustness": {
+    "3-month": 0.31224645635462395,
+    "6-month": 0.4059964549090477
+  },
+  "subperiods": [
+    {
+      "name": "2008-2012",
+      "strategy_sharpe": 0.5703696840240561,
+      "benchmark_sharpe": 0.11566163874433168
+    },
+    {
+      "name": "2013-2017",
+      "strategy_sharpe": 0.5145348495379506,
+      "benchmark_sharpe": 1.1199413223597945
+    },
+    {
+      "name": "2018-2022",
+      "strategy_sharpe": 0.1312307374984105,
+      "benchmark_sharpe": 0.4297343849549455
+    }
+  ],
+  "best_trade_share": 0.14245653283233248,
+  "top5_trade_share": 0.43140625798417626,
+  "criteria": [
+    {
+      "group": "return",
+      "name": "Sharpe ratio higher than benchmark",
+      "measured": "0.40 vs 0.41",
+      "passed": false
+    },
+    {
+      "group": "return",
+      "name": "Sharpe within 0.10 of benchmark and max drawdown under 50% of benchmark's",
+      "measured": "Sharpe 0.40 vs 0.41, drawdown -9.35% vs -51.88%",
+      "passed": true
+    },
+    {
+      "group": "return",
+      "name": "Correlation below 0.3 and Sharpe above 0.5",
+      "measured": "correlation 0.38, Sharpe 0.40",
+      "passed": false
+    },
+    {
+      "group": "robustness",
+      "name": "Every robustness variant has a Sharpe of at least 0.0",
+      "measured": "3-month 0.31, 6-month 0.41",
+      "passed": true
+    },
+    {
+      "group": "robustness",
+      "name": "Positive Sharpe in at least 2 of 3 sub-periods",
+      "measured": "3 of 3",
+      "passed": true
+    },
+    {
+      "group": "robustness",
+      "name": "Best trade under 25% of net profit",
+      "measured": "14.25%",
+      "passed": true
+    }
+  ],
+  "passed": true
+}
