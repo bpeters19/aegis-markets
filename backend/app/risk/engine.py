@@ -30,8 +30,8 @@ class RiskDecision:
 class RiskEngine:
     """Pre-trade risk checks and position sizing.
 
-    evaluate() is a pure function of the signal and a portfolio snapshot:
-    no I/O, no side effects. The kill switch is the only runtime state.
+    evaluate() is a pure function of the signal, a portfolio snapshot and an optional
+    volatility estimate: no I/O, no side effects. The kill switch is the only runtime state.
     """
 
     def __init__(self, limits: RiskLimits | None = None) -> None:
@@ -53,10 +53,11 @@ class RiskEngine:
         signal: SignalEvent,
         portfolio: PortfolioSnapshot,
         requested_quantity: int | None = None,
+        volatility: float | None = None,
     ) -> RiskDecision:
         if signal.action == SignalAction.SELL:
             return self._evaluate_exit(signal, portfolio)
-        return self._evaluate_entry(signal, portfolio, requested_quantity)
+        return self._evaluate_entry(signal, portfolio, requested_quantity, volatility)
 
     def _evaluate_exit(self, signal: SignalEvent, portfolio: PortfolioSnapshot) -> RiskDecision:
         position = portfolio.positions.get(signal.symbol)
@@ -76,6 +77,7 @@ class RiskEngine:
         signal: SignalEvent,
         portfolio: PortfolioSnapshot,
         requested_quantity: int | None,
+        volatility: float | None,
     ) -> RiskDecision:
         limits = self.limits
         equity = portfolio.equity
@@ -106,10 +108,13 @@ class RiskEngine:
             )
 
         per_share_risk = price - stop if stop is not None and stop < price else None
-        if requested_quantity is None:
-            quantity = self._size(price, per_share_risk, portfolio, notes)
-        else:
+        if requested_quantity is not None:
             quantity = requested_quantity
+        elif limits.sizing_mode == "volatility" and not volatility:
+            reasons.append("no volatility estimate yet; volatility-targeted sizing needs more history")
+            quantity = 0
+        else:
+            quantity = self._size(price, per_share_risk, portfolio, notes, volatility)
 
         notional = price * quantity
         risk_amount = per_share_risk * quantity if per_share_risk is not None else Decimal(0)
@@ -142,12 +147,16 @@ class RiskEngine:
         per_share_risk: Decimal | None,
         portfolio: PortfolioSnapshot,
         notes: list[str],
+        volatility: float | None,
     ) -> int:
         limits = self.limits
         equity = portfolio.equity
         caps: dict[str, Decimal] = {}
         if per_share_risk is not None:
             caps["max risk per trade"] = (limits.max_risk_per_trade_pct * equity) // per_share_risk
+        if limits.sizing_mode == "volatility" and volatility:
+            target_notional = limits.target_position_volatility / Decimal(str(volatility)) * equity
+            caps["volatility target"] = target_notional // price
         caps["max position size"] = (limits.max_position_pct * equity) // price
         caps["max total exposure"] = max(Decimal(0), limits.max_exposure_pct * equity - portfolio.gross_exposure) // price
         caps["buying power"] = max(Decimal(0), portfolio.cash) // price

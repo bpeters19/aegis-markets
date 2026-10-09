@@ -14,6 +14,7 @@ from app.market_data.domain import Timeframe
 from app.market_data.ingest import parse_utc
 from app.market_data.repository import fetch_bars
 from app.strategies.ma_crossover import MovingAverageCrossover
+from app.risk.limits import RiskLimits
 from app.trading.pipeline import TradingPipeline
 
 
@@ -72,7 +73,9 @@ def main() -> None:
     parser.add_argument("--fast", type=int, default=10)
     parser.add_argument("--slow", type=int, default=30)
     parser.add_argument("--benchmark", default="SPY")
-    parser.add_argument("--rf", type=float, default=0.0, help="annual risk-free rate, e.g. 0.04")
+    parser.add_argument("--rf", type=float, default=0.0, help="annual risk-free rate, e.g. 0.04; idle cash earns it too")
+    parser.add_argument("--sizing", choices=["stop", "volatility"], default="stop")
+    parser.add_argument("--max-position", type=float, default=0.10, help="max fraction of equity per position")
     args = parser.parse_args()
 
     series = load(args.symbols, args.start, args.end)
@@ -84,7 +87,11 @@ def main() -> None:
     session = Session(bind=connection, join_transaction_mode="create_savepoint")
     try:
         started = time.perf_counter()
-        pipeline = TradingPipeline(session, [MovingAverageCrossover(args.fast, args.slow)], starting_cash=args.capital)
+        limits = RiskLimits(sizing_mode=args.sizing, max_position_pct=Decimal(str(args.max_position)))
+        pipeline = TradingPipeline(
+            session, [MovingAverageCrossover(args.fast, args.slow)],
+            starting_cash=args.capital, limits=limits, cash_rate=Decimal(str(args.rf)),
+        )
         pipeline.run(series)
         elapsed = time.perf_counter() - started
     finally:

@@ -21,6 +21,7 @@ from app.oms.states import OrderSide, OrderType
 from app.portfolio.engine import Portfolio
 from app.risk.engine import RiskDecision, RiskEngine
 from app.risk.limits import RiskLimits
+from app.risk.volatility import VolatilityTracker
 from app.strategies.base import Strategy
 
 
@@ -57,6 +58,7 @@ class TradingPipeline:
         self.bus.subscribe(SignalEvent, self._on_signal)
 
         self.risk = RiskEngine(limits)
+        self.volatility = VolatilityTracker()
         self.oms = OrderManager(session)
         self.simulator = ExecutionSimulator(costs)
         self.portfolio = Portfolio(starting_cash, cash_rate=cash_rate)
@@ -100,6 +102,7 @@ class TradingPipeline:
 
     def _mark_to_close(self, event: BarEvent) -> None:
         self.portfolio.mark(event.bar)
+        self.volatility.update(event.bar)
 
     def _execute(self, bar: Bar, orders: list[WorkingOrder]) -> None:
         if not orders:
@@ -162,7 +165,9 @@ class TradingPipeline:
             for o in self.working.values()
             if o.side == OrderSide.BUY and o.oco_group is None
         ]
-        decision = self.risk.evaluate(signal, self.portfolio.snapshot(pending_buys))
+        decision = self.risk.evaluate(
+            signal, self.portfolio.snapshot(pending_buys), volatility=self.volatility.annualized(signal.symbol)
+        )
         self.decisions.append(decision)
         if not decision.approved:
             self.counts["rejected"] += 1
