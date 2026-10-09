@@ -1,5 +1,6 @@
-"""Backtest service: runs the full pipeline over a period and returns everything a client needs.
-Used by the API; independent of HTTP so any caller (CLI, worker, notebook) can reuse it."""
+"""Backtest service: runs the full pipeline over a period and returns everything a caller needs.
+Independent of HTTP so the API, CLIs and the research evaluator all share it."""
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
@@ -11,8 +12,11 @@ from app.backtest.metrics import (
 )
 from app.backtest.research import window
 from app.database.session import get_engine
+from app.execution.costs import CostModel
 from app.market_data.domain import Bar
 from app.portfolio.engine import ClosedTrade
+from app.risk.limits import RiskLimits
+from app.strategies.base import Strategy
 from app.strategies.ma_crossover import MovingAverageCrossover
 from app.trading.pipeline import TradingPipeline
 
@@ -33,17 +37,21 @@ class BacktestOutput:
     open_positions: dict[str, int]
 
 
-def run_backtest(
+def run_strategy_backtest(
     series: dict[str, list[Bar]],
     benchmark_bars: list[Bar],
-    fast: int,
-    slow: int,
+    strategies: Sequence[Strategy],
     start: datetime,
     end: datetime,
     capital: Decimal,
     cash_rate: Decimal,
+    limits: RiskLimits | None = None,
+    costs: CostModel | None = None,
+    warmup: int | None = None,
+    volatility_lookback: int = 20,
 ) -> BacktestOutput:
-    sliced = {s: window(b, start, end, slow + 1) for s, b in series.items()}
+    warmup = warmup if warmup is not None else max(s.lookback for s in strategies)
+    sliced = {s: window(b, start, end, warmup) for s, b in series.items()}
     sliced = {s: b for s, b in sliced.items() if b}
 
     connection = get_engine().connect()
@@ -51,8 +59,8 @@ def run_backtest(
     session = Session(bind=connection, join_transaction_mode="create_savepoint")
     try:
         pipeline = TradingPipeline(
-            session, [MovingAverageCrossover(fast, slow)],
-            starting_cash=capital, cash_rate=cash_rate, trade_from=start,
+            session, list(strategies), starting_cash=capital, limits=limits, costs=costs,
+            cash_rate=cash_rate, trade_from=start, volatility_lookback=volatility_lookback,
         )
         pipeline.run(sliced)
     finally:
@@ -91,4 +99,21 @@ def run_backtest(
         trade_summary=trade_stats(pf.trades),
         counts=dict(pipeline.counts),
         open_positions={s: p.quantity for s, p in pf.positions.items()},
+    )
+
+
+def run_backtest(
+    series: dict[str, list[Bar]],
+    benchmark_bars: list[Bar],
+    fast: int,
+    slow: int,
+    start: datetime,
+    end: datetime,
+    capital: Decimal,
+    cash_rate: Decimal,
+) -> BacktestOutput:
+    """Moving-average crossover backtest used by the API."""
+    return run_strategy_backtest(
+        series, benchmark_bars, [MovingAverageCrossover(fast, slow)], start, end, capital, cash_rate,
+        warmup=slow + 1,
     )

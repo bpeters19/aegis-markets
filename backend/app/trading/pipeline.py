@@ -49,6 +49,7 @@ class TradingPipeline:
         run_id: str | None = None,
         cash_rate: Decimal = Decimal(0),
         trade_from: datetime | None = None,
+        volatility_lookback: int = 20,
     ) -> None:
         self.run_id = run_id or uuid.uuid4().hex[:8]
         self.bus = EventBus()
@@ -58,7 +59,7 @@ class TradingPipeline:
         self.bus.subscribe(SignalEvent, self._on_signal)
 
         self.risk = RiskEngine(limits)
-        self.volatility = VolatilityTracker()
+        self.volatility = VolatilityTracker(volatility_lookback)
         self.oms = OrderManager(session)
         self.simulator = ExecutionSimulator(costs)
         self.portfolio = Portfolio(starting_cash, cash_rate=cash_rate)
