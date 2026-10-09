@@ -23,6 +23,26 @@ def to_json(result: EvaluationResult) -> str:
     return json.dumps(asdict(result), default=_json_default, indent=2)
 
 
+def _robustness_table(r: EvaluationResult) -> list[str]:
+    if not r.robustness:
+        return ["Robustness variants: not run in this phase."]
+    return [
+        "| Robustness variant | Sharpe ratio |",
+        "|---|---|",
+        *[f"| {name} | {num(sharpe)} |" for name, sharpe in r.robustness.items()],
+    ]
+
+
+def _subperiod_table(r: EvaluationResult) -> list[str]:
+    if not r.subperiods:
+        return ["Sub-periods: not run in this phase."]
+    return [
+        f"| Sub-period | Strategy Sharpe | {r.benchmark_name} Sharpe |",
+        "|---|---|---|",
+        *[f"| {p.name} | {num(p.strategy_sharpe)} | {num(p.benchmark_sharpe)} |" for p in r.subperiods],
+    ]
+
+
 def to_markdown(r: EvaluationResult) -> str:
     s, b = r.strategy, r.benchmark
     bn = r.benchmark_name
@@ -52,13 +72,9 @@ def to_markdown(r: EvaluationResult) -> str:
         f"| Correlation to {bn} | {num(r.correlation)} | 1.00 |",
         f"| Closed trades | {r.closed_trades} | n/a |",
         "",
-        "| Robustness variant | Sharpe ratio |",
-        "|---|---|",
-        *[f"| {name} | {num(sharpe)} |" for name, sharpe in r.robustness.items()],
+        *_robustness_table(r),
         "",
-        f"| Sub-period | Strategy Sharpe | {bn} Sharpe |",
-        "|---|---|---|",
-        *[f"| {p.name} | {num(p.strategy_sharpe)} | {num(p.benchmark_sharpe)} |" for p in r.subperiods],
+        *_subperiod_table(r),
         "",
         "| Profit concentration | Share of net profit |",
         "|---|---|",

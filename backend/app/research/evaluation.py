@@ -208,3 +208,64 @@ def evaluate_development(
         criteria=criteria,
         passed=passed,
     )
+
+
+def judge_locked(
+    c: Criteria,
+    strategy: CurveStats,
+    benchmark: CurveStats | None,
+    correlation: float | None,
+    best_share: float | None,
+) -> tuple[list[CriterionResult], bool]:
+    """Locked-period judging, as clarified in hypotheses.md before the locked run: the return tests
+    (at least one) plus best-trade concentration. Other lookbacks and sub-periods are development checks."""
+    rows, _ = judge(c, strategy, benchmark, correlation, {}, [], best_share)
+    kept = [r for r in rows if r.group == "return" or r.name.startswith("Best trade")]
+    passed = any(r.passed for r in kept if r.group == "return") and all(
+        r.passed for r in kept if r.group == "robustness"
+    )
+    return kept, passed
+
+
+def evaluate_locked(
+    config: HypothesisConfig,
+    series: dict[str, list[Bar]],
+    fingerprints: dict[str, object],
+    end: date,
+) -> EvaluationResult:
+    start = config.holdout.start
+    print(f"Running {config.primary.name} (primary) on the locked period {start} to {end} ...", flush=True)
+    primary = run_variant(config, series, config.primary.lookback_days, start, end)
+    best, top5 = concentration(primary.trades)
+    criteria, passed = judge_locked(
+        config.criteria, primary.strategy, primary.benchmark, primary.relative.correlation, best,
+    )
+    exposure = statistics.fmean(float(x) for _, x in primary.exposure) if primary.exposure else None
+    return EvaluationResult(
+        hypothesis_id=config.id,
+        title=config.title,
+        phase="locked",
+        generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        commit=str(fingerprints["commit"]),
+        data_hash=str(fingerprints["data_hash"]),
+        config_hash=str(fingerprints["config_hash"]),
+        registered_config_hash=str(fingerprints["registered_config_hash"]),
+        holdout_unlocks=int(fingerprints["holdout_unlocks"]),
+        run_ids={config.primary.name: primary.run_id},
+        period_start=start,
+        period_end=end,
+        universe=config.universe,
+        benchmark_name=config.benchmark,
+        cash_rate=config.cash_rate,
+        strategy=primary.strategy,
+        benchmark=primary.benchmark,
+        correlation=primary.relative.correlation,
+        average_exposure=exposure,
+        closed_trades=primary.trade_summary.count,
+        robustness={},
+        subperiods=[],
+        best_trade_share=best,
+        top5_trade_share=top5,
+        criteria=criteria,
+        passed=passed,
+    )

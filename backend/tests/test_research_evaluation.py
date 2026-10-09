@@ -96,3 +96,22 @@ def test_report_shows_the_mechanical_decision():
     markdown = to_markdown(result)
     assert "- **Decision:** FAIL" in markdown
     assert "| 2008-2012 | 0.50 | -0.30 |" in markdown
+
+
+from app.research.evaluation import judge_locked
+
+
+def test_locked_judging_keeps_only_return_tests_and_concentration():
+    rows, _ = judge_locked(C, stats(0.6), stats(0.4, -0.5), 0.5, 0.10)
+    assert [r.group for r in rows] == ["return", "return", "return", "robustness"]
+    assert rows[-1].name.startswith("Best trade")
+
+
+def test_locked_judging_passes_on_drawdown_route():
+    _, passed = judge_locked(C, stats(0.35, -0.20), stats(0.40, -0.50), 0.5, 0.10)
+    assert passed
+
+
+def test_locked_judging_fails_on_concentration():
+    _, passed = judge_locked(C, stats(0.6), stats(0.4, -0.5), 0.5, 0.40)
+    assert not passed
