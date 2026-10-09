@@ -444,3 +444,36 @@ My notes on what I built at each step, why I built it that way, what broke, and 
 **Commits:** `Add ETF research universe, data quality report, locked holdout guard and hypothesis log`
 
 **Things I can talk about in interviews:** How I avoid overfitting (a locked holdout enforced in code, an unlock log, and pre-registered hypotheses), survivorship bias and why I moved to asset-class ETFs, data quality checks against a trading calendar, and why an extreme price move needs to be investigated rather than automatically deleted.
+
+---
+
+## Entry 16: Volatility-targeted position sizing
+**Date:** Oct 9, 2026
+
+**What I built:** A second sizing mode for the risk engine. Instead of sizing from the stop distance, each position is sized so it carries a target amount of volatility: position size = equity x target volatility / the asset's volatility. A VolatilityTracker measures each symbol's annualized volatility from its last 20 daily returns, and the risk engine treats the volatility target as one more cap alongside max position size, exposure, buying power, and risk per trade. The backtest CLI can now switch sizing modes, and passing a risk-free rate now also makes idle cash earn that rate.
+
+**Tech:** Python, statistics module, Decimal, pytest
+
+**Why this matters in finance:** A 10% position in silver is several times riskier than a 10% position in Treasuries. Inverse-volatility sizing gives every position roughly the same risk, which is the core idea behind risk parity funds and most trend-following CTAs.
+
+**Decisions I made:**
+- Made volatility sizing opt-in so every existing result stays unchanged, and wrote a test proving the default mode ignores volatility even when an estimate is passed in.
+- Kept volatility tracking separate from both the strategy and the risk engine. The tracker updates on each bar's close, and the risk engine just receives a number.
+- If a symbol doesn't have enough history for a volatility estimate, the entry is rejected instead of falling back to a guess.
+- No leverage: total exposure still caps at 100%.
+
+**Problems I ran into:**
+- My backtest report still said "idle cash earns nothing" after I made cash earn the risk-free rate. The numbers were right but the label was wrong, so I fixed it.
+
+**How I verified it:** 8 new tests: rolling volatility against a hand calculation (returns of +10% and -10% give a sample stdev of 0.1414 before annualizing), separate tracking per symbol, sizing to the target (2% / 16% x $100,000 = 125 shares at $100), calmer assets getting larger positions, the max position cap still binding, rejection without an estimate, and the default mode ignoring volatility. 122 tests passing.
+
+**Results:** Ran the old 10/30 crossover on the 16 ETFs over 2008-2022 with a 2% cash and risk-free rate, once with each sizing mode. Volatility sizing raised average exposure from 36.7% to 49.0% while volatility stayed flat (3.40% vs 3.34%). The profit factor was 1.14 in both and the Sharpe ratio was about zero in both (0.02 vs -0.04), so the strategy adds essentially nothing over cash. SPY returned 8.73% a year with a -51.88% max drawdown over the same period.
+
+**What I learned:**
+- Sizing decides how much to bet, not whether the bet is good. It raised exposure without raising risk but couldn't create an edge.
+- Old defaults from the stock work were muting the new sizing: max 5 open positions in a 16-asset universe, 1% risk per trade with 5% stops, and a 70% exposure cap.
+- On 16 ETFs, the best single trade was only 11% of profit, compared to 65-91% on 10 hand-picked stocks. Results not carried by one outlier are more believable.
+
+**Commits:** `Add volatility-targeted position sizing with rolling volatility estimates`, `Fix backtest assumptions text and add sizing dev log entry`
+
+**Things I can talk about in interviews:** Inverse-volatility sizing and risk parity, why sizing can't create an edge, how backward-looking volatility estimates fail during jumps like silver's 2026 crash, and how stacked limits can quietly cancel out a sizing change.

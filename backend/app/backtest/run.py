@@ -129,7 +129,7 @@ def main() -> None:
           f"average hold {num(t.avg_holding_days, 1)} days")
     print(f"Best single trade = {pct(t.best_trade_share, False)} of net profit from closed trades")
 
-    print(f"\nAssumptions: risk-free rate {args.rf:.2%}; idle cash earns nothing; costs and slippage per CostModel;")
+    print(f"\nAssumptions: risk-free rate {args.rf:.2%}; idle cash earns the same rate; costs and slippage per CostModel;")
     print("parameters and symbols chosen with hindsight (in-sample). Treat as diagnostics, not evidence.")
 
 
