@@ -131,3 +131,31 @@ No strategy trades real money because of a backtest alone. To move from research
 - **Development result:** (to be filled in)
 - **Locked-period result:** (to be filled in)
 - **Decision:** (to be filled in)
+
+---
+
+### H4: Combined core-satellite portfolio
+- **Date written:** 2026-10-09, before any H2, H3 or H4 code or results exist.
+- **Hypothesis:** A portfolio with a fixed SPY core plus a satellite split between the trend sleeve (H1 rules) and the mean reversion sleeve (H3 primary rules) has a better risk-adjusted return and a smaller drawdown than holding SPY alone, because trend following and mean reversion tend to make money in different market conditions.
+- **Why it might work:** Trend following tends to do well in sustained moves and crashes; short-term mean reversion tends to do well in choppy and steadily rising markets. Combining return streams that fail at different times usually improves the whole, and the weights come from a fixed rule rather than being fitted.
+- **Rule:**
+  - On the first trading day of each month, rebalance to: the core weight in SPY buy-and-hold, and the remaining satellite weight split between the two sleeves in inverse proportion to each sleeve's volatility over the previous 252 trading days (equal risk between the sleeves).
+  - Until a sleeve has 252 days of history, the satellite is split equally between the two sleeves.
+  - Each sleeve is the corresponding strategy run on its own with its own pre-registered rules, sizing and limits. Weights drift between rebalances.
+  - Simulated by combining the three daily return streams, with a cost of 5 basis points on the traded amount at each rebalance.
+- **Universe and period:** SPY, the etf_core trend sleeve and the H3 mean reversion sleeve; development 2008-01-01 to 2023-01-01; 2% cash and risk-free rate.
+- **Variants (fixed list):**
+  - **Primary:** 60% SPY core, 40% satellite.
+  - **Robustness only:** 70/30 and 50/50.
+- **Benchmark:** SPY buy-and-hold, because H4 is meant to replace holding SPY.
+- **Success criteria (development, primary variant), all required:**
+  - Sharpe ratio higher than SPY's
+  - max drawdown no more than 70% of SPY's
+  - Sharpe ratio at least as high as SPY's in at least 2 of the 3 sub-periods (2008-2012, 2013-2017, 2018-2022)
+  - both robustness variants have a Sharpe ratio at least as high as SPY's
+- **Evaluated as written:** H4 is tested exactly as defined here whatever H2 and H3 show. Components are not dropped, swapped or reweighted after their own results are known.
+- **Out-of-sample test:** no locked-period run, because the trend sleeve's 2023-2026 results are already known from H1. If H4 passes development, its out-of-sample test is 6 months of forward paper trading, judged by the same criteria against SPY over the same months.
+- **Known limitations, stated in advance:** return-level simulation instead of share-level rebalancing; inverse-volatility weighting ignores the correlation between the sleeves; each sleeve is simulated with full capital, so a smaller real account would hold smaller positions with more share-rounding error; flat 2% rate.
+- **Development result:** (to be filled in)
+- **Out-of-sample result:** (to be filled in)
+- **Decision:** (to be filled in)
