@@ -60,6 +60,7 @@ Out-of-sample, after costs, a strategy must beat at least one of these to be wor
 - **If it passes:** one run of the primary variant on the locked period (2023-01-01 to the latest data), judged by the same criteria against SPY, logged as a holdout unlock. That result is recorded here whatever it shows.
 - **If it fails:** recorded here, and the next hypothesis starts from scratch. The parameters do not get adjusted to make H1 pass.
 - **Known limitations, stated in advance:** positions are sized at entry and not rebalanced until exit; when the exposure cap binds, symbols processed first in a day get the capital; flat 2% rate instead of historical T-bill rates; the ETF list was chosen in 2026, so a milder form of selection bias remains; HYG and UUP lack a full 12 months of history at the start of 2008, so they join later.
+- **Config hash at pre-registration:** `ef3096ca90c3` (backend/app/research/hypotheses/h1.py)
 - **Development result:** (to be filled in)
 - **Locked-period result:** (to be filled in)
 - **Decision:** (to be filled in)
