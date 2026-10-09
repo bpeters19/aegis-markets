@@ -10,6 +10,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.backtest.metrics import CurveStats, TradeStats, buy_and_hold_curve, summarize, trade_stats
+from app.backtest.holdout import HoldoutLockedError, check_period
 from app.backtest.run import load, num, pct
 from app.database.session import get_engine
 from app.market_data.domain import Bar
@@ -110,6 +111,8 @@ def main() -> None:
     parser.add_argument("--rate", type=Decimal, default=Decimal("0.02"),
                         help="annual rate earned on idle cash, also used as the Sharpe risk-free rate")
     parser.add_argument("--benchmark", default="SPY")
+    parser.add_argument("--unlock-holdout", action="store_true", help="allow periods past the research lock date")
+    parser.add_argument("--reason", help="required with --unlock-holdout; written to the holdout log")
     sub = parser.add_subparsers(dest="command", required=True)
 
     sw = sub.add_parser("sweep", parents=[shared])
@@ -133,6 +136,11 @@ def main() -> None:
         lo, hi = args.train_start, args.test_end
     else:
         lo, hi = datetime(args.first_year, 1, 1, tzinfo=UTC), datetime(args.last_year + 1, 1, 1, tzinfo=UTC)
+
+    try:
+        check_period(hi, unlock=args.unlock_holdout, reason=args.reason, command=args.command)
+    except HoldoutLockedError as exc:
+        raise SystemExit(str(exc))
 
     series = load(args.symbols, lo - timedelta(days=400), hi)
     name = args.benchmark.upper()

@@ -1,3 +1,4 @@
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 
@@ -25,6 +26,8 @@ class Settings(BaseSettings):
     tiingo_adjusted: bool = True
 
     cors_origins: list[str] = ["http://localhost:3000"]
+
+    research_lock_date: date = date(2023, 1, 1)
 
 
 @lru_cache
