@@ -59,6 +59,7 @@ class EvaluationResult:
     top5_trade_share: float | None
     criteria: list[CriterionResult]
     passed: bool
+    concentration_basis: str = "closed trades"
 
 
 def at(day: date) -> datetime:

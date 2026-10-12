@@ -1,5 +1,7 @@
 """Locked research configurations. A config fully defines how a hypothesis is run and judged;
 its content hash identifies it in every report."""
+from __future__ import annotations
+
 import hashlib
 import json
 from dataclasses import asdict, dataclass
@@ -46,8 +48,8 @@ class HypothesisConfig:
     strategy: str
     universe: tuple[str, ...]
     benchmark: str
-    primary: Variant
-    robustness: tuple[Variant, ...]
+    primary: Variant | ParamVariant
+    robustness: tuple[Variant | ParamVariant, ...]
     development: Period
     subperiods: tuple[Period, ...]
     holdout: Period
@@ -56,7 +58,7 @@ class HypothesisConfig:
     limits: RiskLimits
     costs: CostModel
     volatility_lookback: int
-    criteria: Criteria
+    criteria: Criteria | SatelliteCriteria
 
 
 def _default(value: Any) -> Any:
@@ -76,3 +78,25 @@ def canonical_json(config: HypothesisConfig) -> str:
 
 def config_hash(config: HypothesisConfig) -> str:
     return hashlib.sha256(canonical_json(config).encode()).hexdigest()[:12]
+
+
+@dataclass(frozen=True)
+class ParamVariant:
+    """A variant defined by its full parameter set, so the config hash covers every parameter."""
+
+    name: str
+    params: tuple[tuple[str, int | float], ...]
+
+
+@dataclass(frozen=True)
+class SatelliteCriteria:
+    """Criteria for a low-exposure satellite strategy (H3 and later). Every criterion is required."""
+
+    min_sharpe: float = 0.5
+    max_correlation: float = 0.5
+    min_profit_factor: float = 1.3
+    min_trades: int = 200
+    max_best_share_total: float = 0.10
+    robustness_sharpe_above: float = 0.0
+    min_positive_subperiods: int = 2
+    locked_trade_scaling: str = "proportional to calendar days"

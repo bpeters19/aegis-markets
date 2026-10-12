@@ -12,10 +12,13 @@ from app.backtest.run import load
 from app.research.config import config_hash
 from app.research.evaluation import at, evaluate_development, evaluate_locked
 from app.research.fingerprint import REPO_ROOT, data_hash, git_commit, holdout_unlocks, registered_config_hash
+from app.research.config import SatelliteCriteria
 from app.research.hypotheses.h1 import H1
+from app.research.hypotheses.h3 import H3
+from app.research.satellite import evaluate_satellite_development
 from app.research.report import to_json, to_markdown
 
-HYPOTHESES = {"H1": H1}
+HYPOTHESES = {"H1": H1, "H3": H3}
 RESULTS_DIR = REPO_ROOT / "docs" / "research" / "results"
 FAR_FUTURE = date(2100, 1, 1)
 
@@ -59,8 +62,13 @@ def main() -> None:
             "commit": commit, "data_hash": data_hash(series), "config_hash": current,
             "registered_config_hash": registered, "holdout_unlocks": holdout_unlocks(),
         }
-        result = evaluate_development(config, series, fingerprints)
+        if isinstance(config.criteria, SatelliteCriteria):
+            result = evaluate_satellite_development(config, series, fingerprints)
+        else:
+            result = evaluate_development(config, series, fingerprints)
     else:
+        if isinstance(config.criteria, SatelliteCriteria):
+            raise SystemExit("The locked phase for satellite hypotheses is not built yet; nothing was unlocked.")
         development = RESULTS_DIR / f"{config.id}-development.json"
         if not development.exists() or not json.loads(development.read_text(encoding="utf-8"))["passed"]:
             raise SystemExit(f"{config.id} must pass its development evaluation before the locked run.")

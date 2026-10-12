@@ -8,7 +8,7 @@ from typing import Any
 from app.backtest.run import num, pct
 from app.research.evaluation import EvaluationResult
 
-GROUP_LABEL = {"return": "Return test (at least one)", "robustness": "Robustness (all)"}
+GROUP_LABEL = {"return": "Return test (at least one)", "robustness": "Robustness (all)", "required": "Required (all)"}
 
 
 def _json_default(value: Any) -> Any:
@@ -78,8 +78,8 @@ def to_markdown(r: EvaluationResult) -> str:
         "",
         "| Profit concentration | Share of net profit |",
         "|---|---|",
-        f"| Best trade | {pct(r.best_trade_share, False)} |",
-        f"| Top 5 trades (reported, not judged) | {pct(r.top5_trade_share, False)} |",
+        f"| {_best_label(r)} | {pct(r.best_trade_share, False)} |",
+        f"| {_top5_label(r)} | {pct(r.top5_trade_share, False)} |",
         "",
         "| Group | Pre-registered criterion | Measured | Pass? |",
         "|---|---|---|---|",
@@ -92,3 +92,15 @@ def to_markdown(r: EvaluationResult) -> str:
         "- **Reason:** written in hypotheses.md",
     ]
     return "\n".join(lines) + "\n"
+
+
+def _best_label(r: EvaluationResult) -> str:
+    if r.concentration_basis == "closed trades":
+        return "Best trade"
+    return "Best contribution, including open positions"
+
+
+def _top5_label(r: EvaluationResult) -> str:
+    if r.concentration_basis == "closed trades":
+        return "Top 5 trades (reported, not judged)"
+    return "Top 5 contributions, including open positions (reported, not judged)"
