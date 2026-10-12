@@ -9,16 +9,19 @@ from datetime import date, timedelta
 
 from app.backtest.holdout import HoldoutLockedError, check_period
 from app.backtest.run import load
-from app.research.config import config_hash
+from app.research.config import PortfolioConfig, SatelliteCriteria, config_hash
 from app.research.evaluation import at, evaluate_development, evaluate_locked
 from app.research.fingerprint import REPO_ROOT, data_hash, git_commit, holdout_unlocks, registered_config_hash
-from app.research.config import SatelliteCriteria
 from app.research.hypotheses.h1 import H1
+from app.research.hypotheses.h2 import H2
 from app.research.hypotheses.h3 import H3
-from app.research.satellite import evaluate_satellite_development
+from app.research.hypotheses.h4 import H4
+from app.research.portfolio import evaluate_portfolio_development
 from app.research.report import to_json, to_markdown
+from app.research.satellite import evaluate_satellite_development
 
-HYPOTHESES = {"H1": H1, "H3": H3}
+HYPOTHESES = {"H1": H1, "H2": H2, "H3": H3, "H4": H4}
+SLEEVES = {"H1": H1, "H3": H3}
 RESULTS_DIR = REPO_ROOT / "docs" / "research" / "results"
 FAR_FUTURE = date(2100, 1, 1)
 
@@ -41,6 +44,10 @@ def main() -> None:
             f"Config hash {current} does not match the pre-registered {registered}. "
             f"The configuration changed after pre-registration."
         )
+    if isinstance(config, PortfolioConfig):
+        for sleeve_id, recorded in config.sleeve_config_hashes:
+            if config_hash(SLEEVES[sleeve_id]) != recorded:
+                raise SystemExit(f"Sleeve {sleeve_id}'s config no longer matches the hash {config.id} was registered with.")
 
     commit = git_commit()
     if commit.endswith("+dirty") and (args.phase == "locked" or not args.allow_dirty):
@@ -62,11 +69,15 @@ def main() -> None:
             "commit": commit, "data_hash": data_hash(series), "config_hash": current,
             "registered_config_hash": registered, "holdout_unlocks": holdout_unlocks(),
         }
-        if isinstance(config.criteria, SatelliteCriteria):
+        if isinstance(config, PortfolioConfig):
+            result = evaluate_portfolio_development(config, series, fingerprints, SLEEVES)
+        elif isinstance(config.criteria, SatelliteCriteria):
             result = evaluate_satellite_development(config, series, fingerprints)
         else:
             result = evaluate_development(config, series, fingerprints)
     else:
+        if isinstance(config, PortfolioConfig):
+            raise SystemExit(f"{config.id} has no locked-period run; its out-of-sample test is forward paper trading. Nothing was unlocked.")
         if isinstance(config.criteria, SatelliteCriteria):
             raise SystemExit("The locked phase for satellite hypotheses is not built yet; nothing was unlocked.")
         development = RESULTS_DIR / f"{config.id}-development.json"

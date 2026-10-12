@@ -97,6 +97,8 @@ No strategy trades real money because of a backtest alone. To move from research
   - both robustness variants have a Sharpe ratio at least as high as SPY's
 - **Out-of-sample test:** no locked-period run, because the trend sleeve's 2023-2026 results are already known from H1. If H2 passes development, its out-of-sample test is 6 months of forward paper trading, judged by the same criteria against SPY over the same months.
 - **Known limitations, stated in advance:** return-level simulation instead of share-level rebalancing in the engine; the trend sleeve inherits H1's limitations; flat 2% rate.
+- **Implementation details (clarified 2026-10-12, before any H2 or H4 run):** sleeve returns come from each sleeve's own primary backtest, including interest on its idle cash, and each sleeve trades only its own universe; the SPY core uses buy-and-hold returns; each rebalance uses only returns from earlier days and happens before that day's return is applied; the 5 basis point cost applies to the traded amount, including the initial allocation from cash; if a sleeve had zero volatility over the 252-day window, the satellite is split equally.
+- **Config hash at pre-registration:** `6906a411ffa9` (backend/app/research/hypotheses/h2.py)
 - **Development result:** (to be filled in)
 - **Out-of-sample result:** (to be filled in)
 - **Decision:** (to be filled in)
@@ -159,6 +161,8 @@ No strategy trades real money because of a backtest alone. To move from research
 - **Evaluated as written:** H4 is tested exactly as defined here whatever H2 and H3 show. Components are not dropped, swapped or reweighted after their own results are known.
 - **Out-of-sample test:** no locked-period run, because the trend sleeve's 2023-2026 results are already known from H1. If H4 passes development, its out-of-sample test is 6 months of forward paper trading, judged by the same criteria against SPY over the same months.
 - **Known limitations, stated in advance:** return-level simulation instead of share-level rebalancing; inverse-volatility weighting ignores the correlation between the sleeves; each sleeve is simulated with full capital, so a smaller real account would hold smaller positions with more share-rounding error; flat 2% rate.
+- **Implementation details (clarified 2026-10-12, before any H2 or H4 run):** sleeve returns come from each sleeve's own primary backtest, including interest on its idle cash, and each sleeve trades only its own universe; the SPY core uses buy-and-hold returns; each rebalance uses only returns from earlier days and happens before that day's return is applied; the 5 basis point cost applies to the traded amount, including the initial allocation from cash; if a sleeve had zero volatility over the 252-day window, the satellite is split equally.
+- **Config hash at pre-registration:** `524acb2a255e` (backend/app/research/hypotheses/h4.py)
 - **Development result:** (to be filled in)
 - **Out-of-sample result:** (to be filled in)
 - **Decision:** (to be filled in)
@@ -187,6 +191,8 @@ No strategy trades real money because of a backtest alone. To move from research
 - **Evaluated as written:** H4 is tested exactly as defined here whatever H2 and H3 show. Components are not dropped, swapped or reweighted after their own results are known.
 - **Out-of-sample test:** no locked-period run, because the trend sleeve's 2023-2026 results are already known from H1. If H4 passes development, its out-of-sample test is 6 months of forward paper trading, judged by the same criteria against SPY over the same months.
 - **Known limitations, stated in advance:** return-level simulation instead of share-level rebalancing; inverse-volatility weighting ignores the correlation between the sleeves; each sleeve is simulated with full capital, so a smaller real account would hold smaller positions with more share-rounding error; flat 2% rate.
+- **Implementation details (clarified 2026-10-12, before any H2 or H4 run):** sleeve returns come from each sleeve's own primary backtest, including interest on its idle cash, and each sleeve trades only its own universe; the SPY core uses buy-and-hold returns; each rebalance uses only returns from earlier days and happens before that day's return is applied; the 5 basis point cost applies to the traded amount, including the initial allocation from cash; if a sleeve had zero volatility over the 252-day window, the satellite is split equally.
+- **Config hash at pre-registration:** `524acb2a255e` (backend/app/research/hypotheses/h4.py)
 - **Development result:** (to be filled in)
 - **Out-of-sample result:** (to be filled in)
 - **Decision:** (to be filled in)

@@ -100,3 +100,41 @@ class SatelliteCriteria:
     robustness_sharpe_above: float = 0.0
     min_positive_subperiods: int = 2
     locked_trade_scaling: str = "proportional to calendar days"
+
+
+@dataclass(frozen=True)
+class WeightVariant:
+    name: str
+    core_weight: float
+
+
+@dataclass(frozen=True)
+class PortfolioCriteria:
+    """Criteria for portfolios meant to replace holding the benchmark (H2, H4). All required."""
+
+    sharpe_strictly_higher: bool
+    max_drawdown_ratio: float
+    min_subperiods_at_least_benchmark: int = 2
+
+
+@dataclass(frozen=True)
+class PortfolioConfig:
+    """A fixed core plus sleeves, each sleeve being a previously tested hypothesis's primary variant.
+    sleeve_config_hashes pins the exact sleeve definitions this portfolio was pre-registered with."""
+
+    id: str
+    title: str
+    core: str
+    sleeves: tuple[str, ...]
+    sleeve_config_hashes: tuple[tuple[str, str], ...]
+    universe: tuple[str, ...]
+    benchmark: str
+    primary: WeightVariant
+    robustness: tuple[WeightVariant, ...]
+    development: Period
+    subperiods: tuple[Period, ...]
+    cash_rate: Decimal
+    rebalance: str
+    cost_bps: float
+    vol_window: int
+    criteria: PortfolioCriteria
