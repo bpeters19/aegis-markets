@@ -128,11 +128,12 @@ No strategy trades real money because of a backtest alone. To move from research
   - positive Sharpe ratio in at least 2 of the 3 sub-periods (2008-2012, 2013-2017, 2018-2022)
 - **Out-of-sample test:** one locked-period run of the primary variant (2023-01-01 to the latest data), judged by the Sharpe, correlation, profit factor, and concentration criteria. The trade-count criterion is scaled to the locked period's length. That run is logged as a holdout unlock.
 - **Known limitations, stated in advance:** fills at the next open instead of the signal close, which may reduce the edge compared with published results; all gains are short-term for tax purposes; flat 2% rate; the five ETFs were chosen in 2026.
-- **Development result:** (to be filled in)
+- **Development result:** FAIL. [Full report](results/H3-development.md) | commit `81236484b021` | data `b757d04836e7` | config `88055e63c63c`
+- **Development reason:** Failed on one criterion, the Sharpe ratio: 0.24 against the 0.5 requirement. Every other criterion passed: correlation to SPY 0.35, profit factor just above 1.3, 513 closed trades, best contribution 6.2% of total profit, both other thresholds positive (0.25 and 0.28), and 2 of 3 sub-periods positive. The edge is consistent and spread across many trades, but it is small compared with the swings while in a trade. The 2018-2022 sub-period was negative (-0.11), which fits the effect fading, and filling at the next open instead of the signal close may have cost part of the edge, as noted in advance.
 - **Implementation details (clarified 2026-10-12, before H3 code touched any data):** the RSI is Wilder's RSI with a 2-day period, seeded with a simple average of the first 2 changes and computed over the strategy's fixed 201-bar history window so results are deterministic. The 10-day limit counts trading days from the entry signal. The strategy tracks its own entries; if the risk engine rejects an entry, the strategy may skip re-entering that symbol until its exit rule fires, which should be rare with 5 symbols, 5 positions and 100% exposure.
 - **Config hash at pre-registration:** `88055e63c63c` (backend/app/research/hypotheses/h3.py)
-- **Locked-period result:** (to be filled in)
-- **Decision:** (to be filled in)
+- **Locked-period result:** not run, because H3 failed development.
+- **Decision:** FAIL. No locked-period run, and the parameters will not be adjusted. H3's sleeve stays in H4 exactly as pre-registered.
 
 ---
 

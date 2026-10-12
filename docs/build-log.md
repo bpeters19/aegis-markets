@@ -540,3 +540,37 @@ My notes on what I built at each step, why I built it that way, what broke, and 
 **Commits:** `Add one-time locked-period evaluation with logged holdout unlock`, `Record H1 locked-period result: FAIL`
 
 **Things I can talk about in interviews:** What a locked holdout is and how I enforced it in code, why a strategy can pass development and fail out-of-sample, regime dependence of trend following, how I spotted a flaw in my own metric without using it to change the result, and why a documented negative result is worth more than an unverifiable positive one.
+
+---
+
+## Entry 19: H3, short-term mean reversion
+**Date:** Oct 12, 2026
+
+**What I built:** A Wilder RSI indicator, a mean reversion strategy (buy when the 2-day RSI is below a threshold and price is above its 200-day average; exit when the close rises above its 5-day average or after 10 trading days), a profit concentration measure that includes positions still open at the end, and a second evaluation path for "satellite" strategies with their own criteria: an absolute Sharpe ratio, correlation, profit factor, trade count, and concentration, all required.
+
+**Tech:** Python, pytest (parametrized tests), dataclasses, content hashing
+
+**Why this matters in finance:** Different strategies need different yardsticks. A low-exposure strategy meant to add something different shouldn't be judged on beating the market's raw return, but it still has to earn its risk.
+
+**Decisions I made:**
+- Kept H1's evaluation code frozen and added the new concentration measure and criteria as separate code, so H1's recorded result can never change. Added a test that pins H1's config hash to its recorded value, which proved my config changes didn't alter it.
+- Recorded every strategy parameter in each variant, not just the one that varies, so the config hash covers the full strategy.
+- Settled two details the pre-registration left open (which RSI formula, and how the 10-day limit is counted) before H3 touched any data, and recorded them with the date.
+- Defined how the trade-count requirement scales for a locked run before running anything.
+
+**Problems I ran into:**
+- My test compared a Decimal setting to a float with pytest.approx, which Python can't subtract. Fixed it with an exact Decimal comparison.
+
+**How I verified it:** 24 new tests, including a hand-calculated RSI (66.67, then 40), the four-down-day entry that should fire at RSI 6.25 and not at 12.5, both exit rules, and a parametrized test that breaks each H3 criterion one at a time. 171 tests passing.
+
+**Results:** H3 failed development (2008-2022). Sharpe 0.24 against a 0.5 requirement; everything else passed: correlation 0.35, profit factor just above 1.3, 513 trades, best contribution 6.2% of total profit, other thresholds 0.25 and 0.28, and 2 of 3 sub-periods positive (2018-2022 was -0.11). Average exposure was 7%.
+
+**What I learned:**
+- This edge is real-looking (consistent, diversified, many trades) but too small for the risk taken.
+- Sharpe doesn't depend much on how much capital is deployed, so low exposure wasn't the reason for the low Sharpe.
+- The weak recent sub-period fits the effect fading as it got popular.
+- I didn't test entering at the signal close after seeing the result, because adding tests after the fact is fishing. H3 stays in H4 as pre-registered.
+
+**Commits:** `Measure profit concentration on total P&L including open positions for new hypotheses`, `Add Wilder RSI and mean reversion strategy; record H3 implementation details before any data run`, `Add satellite criteria, H3 config and evaluation path; record H3 config hash before any run`, `Record H3 development result: FAIL`
+
+**Things I can talk about in interviews:** Why Sharpe is roughly independent of capital deployed, why different strategy types need different criteria, freezing evaluation code so recorded results stay reproducible, how many-trade results are more trustworthy than few-trade results, and why I didn't add new tests after seeing a failure.

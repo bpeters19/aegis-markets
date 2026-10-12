@@ -1,0 +1,129 @@
+{
+  "hypothesis_id": "H3",
+  "title": "Short-term mean reversion in equity index ETFs",
+  "phase": "development",
+  "generated_at": "2026-10-12 15:03 UTC",
+  "commit": "81236484b021",
+  "data_hash": "b757d04836e7",
+  "config_hash": "88055e63c63c",
+  "registered_config_hash": "88055e63c63c",
+  "holdout_unlocks": 1,
+  "run_ids": {
+    "RSI below 10": "ce67b7c1",
+    "RSI below 5": "39dc6d50",
+    "RSI below 15": "c1ca1b31"
+  },
+  "period_start": "2008-01-01",
+  "period_end": "2023-01-01",
+  "universe": [
+    "SPY",
+    "QQQ",
+    "IWM",
+    "EFA",
+    "EEM"
+  ],
+  "benchmark_name": "SPY",
+  "cash_rate": "0.02",
+  "strategy": {
+    "total_return": 0.509188265450587,
+    "cagr": 0.027840421012307104,
+    "volatility": 0.0337942019533314,
+    "sharpe": 0.23771041938332085,
+    "sortino": 0.33101913972349406,
+    "drawdown": {
+      "max_drawdown": -0.0701267989409764,
+      "peak": "2018-01-30",
+      "trough": "2019-08-05",
+      "recovered": "2021-02-02",
+      "duration_days": 757
+    },
+    "calmar": 0.3970011669253511
+  },
+  "benchmark": {
+    "total_return": 2.505946553008389,
+    "cagr": 0.08729953253485956,
+    "volatility": 0.20747865072197266,
+    "sharpe": 0.410928701917562,
+    "sortino": 0.5747499440337841,
+    "drawdown": {
+      "max_drawdown": -0.5188279315280941,
+      "peak": "2008-01-02",
+      "trough": "2009-03-09",
+      "recovered": "2011-04-27",
+      "duration_days": 836
+    },
+    "calmar": 0.16826297743403654
+  },
+  "correlation": 0.3512383540036614,
+  "average_exposure": 0.07162363054852607,
+  "closed_trades": 513,
+  "robustness": {
+    "RSI below 5": 0.2529421759339553,
+    "RSI below 15": 0.28052758699272295
+  },
+  "subperiods": [
+    {
+      "name": "2008-2012",
+      "strategy_sharpe": 0.386908886486756,
+      "benchmark_sharpe": 0.11566163874433287
+    },
+    {
+      "name": "2013-2017",
+      "strategy_sharpe": 0.5367104269704405,
+      "benchmark_sharpe": 1.1199413223597943
+    },
+    {
+      "name": "2018-2022",
+      "strategy_sharpe": -0.10731593291711539,
+      "benchmark_sharpe": 0.4297343849549428
+    }
+  ],
+  "best_trade_share": 0.062239262560529154,
+  "top5_trade_share": 0.2314464242512069,
+  "criteria": [
+    {
+      "group": "required",
+      "name": "Sharpe ratio above 0.5",
+      "measured": "0.24",
+      "passed": false
+    },
+    {
+      "group": "required",
+      "name": "Correlation to benchmark below 0.5",
+      "measured": "0.35",
+      "passed": true
+    },
+    {
+      "group": "required",
+      "name": "Profit factor above 1.3",
+      "measured": "1.30",
+      "passed": true
+    },
+    {
+      "group": "required",
+      "name": "At least 200 closed trades",
+      "measured": "513",
+      "passed": true
+    },
+    {
+      "group": "required",
+      "name": "Best contribution under 10% of total profit including open positions",
+      "measured": "6.22%",
+      "passed": true
+    },
+    {
+      "group": "required",
+      "name": "Every robustness variant has a Sharpe ratio above 0.0",
+      "measured": "RSI below 5 0.25, RSI below 15 0.28",
+      "passed": true
+    },
+    {
+      "group": "required",
+      "name": "Positive Sharpe in at least 2 of 3 sub-periods",
+      "measured": "2 of 3",
+      "passed": true
+    }
+  ],
+  "passed": false,
+  "concentration_basis": "total profit including open positions"
+}
