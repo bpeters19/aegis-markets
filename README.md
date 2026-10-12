@@ -4,17 +4,19 @@
 
 An event-driven trading platform in Python, built to resemble real trading infrastructure: a validated market data pipeline, a strategy engine where look-ahead bias is structurally impossible, pre-trade risk checks, an order management system with an append-only audit log, a realistic execution simulator, portfolio accounting that reconciles against the order system, and research tooling for out-of-sample validation.
 
-105 tests run in CI on every push against a real PostgreSQL 18 database, including a migration drift check.
+205 tests (199 backend, 6 frontend) run in CI on every push against a real PostgreSQL 18 database, including a migration drift check.
 
 ## What it does
 
-- **Market data:** ingests daily OHLCV bars from the Tiingo API with retries and exponential backoff, parses prices straight into exact decimals, validates every bar, and stores them idempotently in PostgreSQL with source lineage.
+- **Market data:** ingests daily OHLCV bars from the Tiingo API with retries and exponential backoff, parses prices straight into exact decimals, validates every bar, and stores them idempotently in PostgreSQL with source lineage. A data quality report checks every symbol against the trading calendar.
 - **Strategy engine:** replays bars one at a time through a typed event bus. Strategies only ever receive an immutable window of past bars, and tests prove they can never see future data.
-- **Risk engine:** sizes each position from its stop distance, then runs nine configurable pre-trade checks (position size, exposure, risk per trade, daily loss, open positions, duplicates, stop required, buying power, kill switch). Working orders count toward limits, and exits are never blocked.
+- **Risk engine:** sizes each position from its stop distance or to a volatility target, then runs configurable pre-trade checks (position size, exposure, risk per trade, daily loss, open positions, duplicates, stop required, buying power, kill switch). Working orders count toward limits, and exits are never blocked.
 - **Order management:** orders move through an explicit state machine. Orders and fills are idempotent, and every state change is written to an audit log that a PostgreSQL trigger makes append-only.
 - **Execution simulator:** fills at the next bar's open with slippage, commissions and volume limits; models gap risk on stops; attaches stop and target brackets as one-cancels-other orders.
 - **Portfolio:** average-cost accounting with realized and unrealized P&L, interest on idle cash, a daily equity curve, and an accounting identity check after every run. Positions are reconciled against the order system's fills.
-- **Research:** Sharpe, Sortino, drawdown, Calmar, beta and alpha against a benchmark, trade statistics, parameter sweeps, holdout tests and walk-forward analysis.
+- **Research workflow:** hypotheses are pre-registered before testing, with success criteria defined as code. A locked holdout period is enforced in code and every unlock is logged. Each result records the commit, a content hash of the data and of the config, and is judged PASS or FAIL mechanically by tested code.
+- **Paper trading:** forward paper accounts run a frozen strategy config from their start date. A daily runner fetches new bars, replays the account deterministically, checks every recorded day for drift, and appends the new day to an append-only ledger.
+- **Dashboard:** a Next.js and TypeScript app with types generated from the API's OpenAPI schema. It runs backtests with return, drawdown and exposure charts and a sortable trade table, and shows each paper account's positions, fills, queued orders and ledger.
 
 ## Architecture
 
@@ -49,20 +51,24 @@ For each bar, handlers run in the order a trading day happens: working orders ex
 
 ## Research findings
 
-The included strategy is a simple moving-average crossover across 10 large US stocks and ETFs. It exists to exercise the infrastructure, and the research tools were used to test it honestly:
+Every strategy idea was written down with its success criteria before it was tested, then judged by code. Results are in [docs/research/hypotheses.md](docs/research/hypotheses.md), with full generated reports in [docs/research/results](docs/research/results).
 
-| Test | Result |
-|---|---|
-| Holdout: tune on 2018-2022, test on 2023-2025 | Best in-sample parameters: Sharpe 1.12 in-sample, 0.65 out-of-sample |
-| Walk-forward: re-tune each year on the prior 3 years, 2021-2025 | Average Sharpe 1.29 in-sample, 0.14 out-of-sample; chosen parameters changed almost every year |
-| Compounded out-of-sample, 2021-2025 | Walk-forward +21.4%, fixed parameters +44.0%, SPY buy-and-hold +93.4% |
-| 2022 bear market | Strategy about +0.9%, SPY -18.4% |
+| Hypothesis | Result | What it showed |
+|---|---|---|
+| **H1:** trend following across 16 asset-class ETFs | Passed development, failed the locked 2023-2026 test | Sharpe 0.40 vs 0.41 for SPY with a max drawdown of -9% vs -52% in development, but in the bull-market holdout its correlation to stocks jumped from 0.38 to 0.67 |
+| **H3:** short-term mean reversion in equity index ETFs | Failed development | Consistent across 513 trades and settings, but a Sharpe of 0.24 against a 0.5 requirement |
+| **H2:** 70% SPY plus the trend sleeve | Failed development | Sharpe 0.43 vs 0.41 and a smaller drawdown, but correlation 0.99 and better than SPY in only 1 of 3 sub-periods |
+| **H4:** SPY core plus both sleeves weighted by risk | Failed development | Nearly identical to simply holding about 67% SPY and 33% cash |
 
-**Conclusion:** parameter optimization overfits, with almost all of the in-sample advantage disappearing out of sample. The strategy behaves like a low-exposure (about 20% invested) defensive filter: much smaller drawdowns, but far lower returns than buy-and-hold in bull markets. There is no evidence of a tradable edge in returns. See the [dev log](docs/build-log.md) for the full analysis.
+**Conclusion:** none of these strategies beats a plain index fund held at a chosen level of risk. The sleeves reduced drawdowns mostly by taking money out of stocks. Lessons carried forward: compare portfolios against SPY plus cash at the same volatility, allocate by risk rather than dollars, and measure profit concentration including open positions.
 
 ## Tech stack
 
-Python 3.13, FastAPI, SQLAlchemy 2.0, PostgreSQL 18, Alembic, Pydantic, httpx, pytest, GitHub Actions
+**Backend:** Python 3.13, FastAPI, SQLAlchemy 2.0, PostgreSQL 18, Alembic, Pydantic, httpx, pytest
+
+**Frontend:** Next.js, React, TypeScript, Tailwind CSS, Recharts, Vitest, openapi-typescript
+
+**CI:** GitHub Actions with a PostgreSQL service container
 
 ## Getting started
 
@@ -95,60 +101,71 @@ pytest -v
 
 ## Usage
 
-All commands run from `backend/`.
+Backend commands run from `backend/`.
 
-```bash
-# Ingest daily bars
-python -m app.market_data.ingest --provider tiingo --symbols NVDA AAPL MSFT SPY --start 2018-01-01 --end 2026-01-01
+Ingest daily bars and check data quality:
 
-# Run the full pipeline (strategy -> risk -> OMS -> execution -> portfolio) and list every trade
-python -m app.trading.replay --symbols NVDA AAPL MSFT SPY --start 2025-01-01 --end 2026-01-01
+    python -m app.market_data.ingest --provider tiingo --symbols SPY TLT GLD --start 2007-01-01 --end 2026-10-09
+    python -m app.market_data.quality
 
-# Backtest with full metrics against SPY
-python -m app.backtest.run --symbols NVDA AAPL MSFT SPY --start 2025-01-01 --end 2026-01-01 --rf 0.04
+Run a backtest with full metrics against SPY:
 
-# Holdout and walk-forward tests
-python -m app.backtest.research holdout --symbols NVDA AAPL MSFT SPY --train-start 2018-01-01 --split 2023-01-01 --test-end 2026-01-01
-python -m app.backtest.research walkforward --symbols NVDA AAPL MSFT SPY --first-year 2018 --last-year 2025
+    python -m app.backtest.run --symbols SPY QQQ TLT GLD --start 2008-01-01 --end 2023-01-01 --rf 0.02 --sizing volatility
 
-# API (docs at http://127.0.0.1:8000/docs)
-uvicorn app.main:app --reload
-```
+Run the official evaluation of a pre-registered hypothesis:
 
-Backtests run inside a rolled-back transaction, so they leave no rows behind. `app.trading.replay --persist` saves a run's orders, fills and audit log.
+    python -m app.research.evaluate H1
+
+Create a paper account and record the latest complete trading day (run after 6 PM New York time):
+
+    python -m app.paper.accounts create --name my-account --hypothesis H1 --purpose "why this account exists"
+    python -m app.paper.run
+
+Start the API (interactive docs at http://127.0.0.1:8000/docs) and the dashboard (http://localhost:3000):
+
+    uvicorn app.main:app --reload
+    cd ../frontend && npm install && npm run dev
+
+Backtests run inside rolled-back transactions, so they leave no rows behind.
 
 ## Project structure
-backend/
-app/
-api/ FastAPI routes: health, readiness, bars
-market_data/ domain model, providers (Tiingo, Alpaca, fake), ingestion
-engine/ events, event bus, bar feed, bar history, signal engine
-strategies/ strategy interface, moving-average crossover
-risk/ limits and pre-trade risk engine
-oms/ order state machine, order manager, models
-execution/ cost model and execution simulator
-portfolio/ snapshot and portfolio accounting
-trading/ end-to-end pipeline and replay CLI
-backtest/ metrics, backtest report, research tools
-migrations/ Alembic migrations (including the audit-log trigger)
-tests/ unit and integration tests
-docs/build-log.md engineering log: decisions, problems and results per milestone
 
+- `backend/app/api/` - FastAPI routes: health, readiness, bars, backtests, paper accounts
+- `backend/app/market_data/` - domain model, providers (Tiingo, Alpaca, fake), ingestion, quality report, universes
+- `backend/app/engine/` - events, event bus, bar feed, bar history, signal engine
+- `backend/app/indicators/` - technical indicators (Wilder RSI)
+- `backend/app/strategies/` - moving-average crossover, time-series momentum, mean reversion
+- `backend/app/risk/` - limits, volatility tracking and the pre-trade risk engine
+- `backend/app/oms/` - order state machine, order manager, models
+- `backend/app/execution/` - cost model and execution simulator
+- `backend/app/portfolio/` - snapshot and portfolio accounting
+- `backend/app/trading/` - end-to-end pipeline
+- `backend/app/backtest/` - metrics, backtest service and report, holdout lock
+- `backend/app/research/` - hypothesis configs, evaluators, portfolio combiner, fingerprints, reports
+- `backend/app/paper/` - paper accounts, replay, drift detection, daily runner
+- `backend/migrations/` - Alembic migrations, including the append-only triggers
+- `frontend/` - Next.js dashboard
+- `docs/build-log.md` - engineering log: decisions, problems and results per milestone
+- `docs/research/` - pre-registered hypotheses, results reports and the holdout log
 
 ## Limitations
 
 - Daily bars only, so the order of prices within a day is unknown (handled with a pessimistic assumption).
-- The 10-symbol universe was chosen in hindsight, so every result, including buy-and-hold, carries survivorship bias. A point-in-time universe would fix this.
+- The research universe was chosen in 2026, so a mild form of selection bias remains.
 - A flat interest rate is used for cash and the Sharpe ratio instead of historical T-bill rates.
-- Long-only, simulated execution only. The Alpaca provider is tested against a mocked API but has not been run against the live service.
+- Long-only, and execution is simulated; there is no broker connection yet. The Alpaca provider is tested against a mocked API only.
+- Portfolio hypotheses are simulated at the return level, not with share-level rebalancing in the engine.
+- The daily paper runner needs a machine that is on after the market close.
 
 ## Roadmap
 
-- Next.js dashboard for positions, orders, signals and equity curves
-- Live market data over WebSockets and a live paper-trading loop
-- Broker adapters (Alpaca, Interactive Brokers) behind the existing order interface
-- AI research agent producing structured analysis that feeds the strategy and risk layers, never placing trades directly
-- C++ order book and performance-critical components
+- Automatic weekday scheduling for the paper runner
+- Share-level portfolio rebalancing in the engine, so portfolio hypotheses can be paper traded
+- A broker adapter (Alpaca paper trading first) behind the existing order interface
+- Live market data over WebSockets
+- New pre-registered hypotheses using the lessons above, judged against a risk-matched benchmark
+- An AI research agent producing structured analysis that feeds the strategy and risk layers, never placing trades directly
+- A C++ order book and performance-critical components
 
 ## Author
 
