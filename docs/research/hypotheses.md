@@ -99,9 +99,11 @@ No strategy trades real money because of a backtest alone. To move from research
 - **Known limitations, stated in advance:** return-level simulation instead of share-level rebalancing in the engine; the trend sleeve inherits H1's limitations; flat 2% rate.
 - **Implementation details (clarified 2026-10-12, before any H2 or H4 run):** sleeve returns come from each sleeve's own primary backtest, including interest on its idle cash, and each sleeve trades only its own universe; the SPY core uses buy-and-hold returns; each rebalance uses only returns from earlier days and happens before that day's return is applied; the 5 basis point cost applies to the traded amount, including the initial allocation from cash; if a sleeve had zero volatility over the 252-day window, the satellite is split equally.
 - **Config hash at pre-registration:** `6906a411ffa9` (backend/app/research/hypotheses/h2.py)
-- **Development result:** (to be filled in)
-- **Out-of-sample result:** (to be filled in)
-- **Decision:** (to be filled in)
+- **Development result:** FAIL. [Full report](results/H2-development.md) | commit `6409593d3496` | data `ad3e31c528ae` | config `6906a411ffa9`
+- **Development reason:** Passed three of four criteria: Sharpe 0.43 vs 0.41, max drawdown -40.10% vs -51.88% (77% of SPY's), and both robustness mixes at least as good as SPY. Failed the sub-period test: better than SPY in 2008-2012 (0.14 vs 0.12) but worse in 2013-2017 (1.06 vs 1.12) and 2018-2022 (0.42 vs 0.43). Correlation to SPY was 0.99: the trend sleeve is so calm that 30% of the money carried only a small share of the portfolio's risk, so it stayed almost entirely a stock bet.
+- **Out-of-sample result:** not run, because it failed development.
+- **Decision:** FAIL. Not promoted to paper trading; weights and sleeves will not be adjusted.
+- **Lessons for future portfolio hypotheses (recorded 2026-10-12, before any new hypothesis is written):** compare against SPY plus cash at the same volatility, not 100% SPY, because holding less stock alone reduces drawdowns; and allocate sleeves by risk rather than by dollars, since a calm sleeve at a large dollar weight still carries little of the portfolio's risk.
 
 ---
 
@@ -163,9 +165,11 @@ No strategy trades real money because of a backtest alone. To move from research
 - **Known limitations, stated in advance:** return-level simulation instead of share-level rebalancing; inverse-volatility weighting ignores the correlation between the sleeves; each sleeve is simulated with full capital, so a smaller real account would hold smaller positions with more share-rounding error; flat 2% rate.
 - **Implementation details (clarified 2026-10-12, before any H2 or H4 run):** sleeve returns come from each sleeve's own primary backtest, including interest on its idle cash, and each sleeve trades only its own universe; the SPY core uses buy-and-hold returns; each rebalance uses only returns from earlier days and happens before that day's return is applied; the 5 basis point cost applies to the traded amount, including the initial allocation from cash; if a sleeve had zero volatility over the 252-day window, the satellite is split equally.
 - **Config hash at pre-registration:** `524acb2a255e` (backend/app/research/hypotheses/h4.py)
-- **Development result:** (to be filled in)
-- **Out-of-sample result:** (to be filled in)
-- **Decision:** (to be filled in)
+- **Development result:** FAIL. [Full report](results/H4-development.md) | commit `c4d204e4b296` | data `ad3e31c528ae` | config `524acb2a255e`
+- **Development reason:** Passed three of four criteria: Sharpe 0.42 vs 0.41, max drawdown -34.88% vs -51.88% (67% of SPY's), and both robustness mixes at least as good as SPY. Failed the sub-period test with the same pattern as H2 (better in 2008-2012, slightly worse after). Correlation to SPY was 0.99, and the result is almost the same as simply holding about 67% SPY and 33% cash, which keeps SPY's Sharpe and scales its drawdown to about -34.8%. The sleeves cut drawdowns mostly by taking money out of stocks, not by adding a separate source of return.
+- **Out-of-sample result:** not run, because it failed development.
+- **Decision:** FAIL. Not promoted to paper trading; weights and sleeves will not be adjusted.
+- **Lessons for future portfolio hypotheses (recorded 2026-10-12, before any new hypothesis is written):** compare against SPY plus cash at the same volatility, not 100% SPY, because holding less stock alone reduces drawdowns; and allocate sleeves by risk rather than by dollars, since a calm sleeve at a large dollar weight still carries little of the portfolio's risk.
 
 ---
 
@@ -193,6 +197,8 @@ No strategy trades real money because of a backtest alone. To move from research
 - **Known limitations, stated in advance:** return-level simulation instead of share-level rebalancing; inverse-volatility weighting ignores the correlation between the sleeves; each sleeve is simulated with full capital, so a smaller real account would hold smaller positions with more share-rounding error; flat 2% rate.
 - **Implementation details (clarified 2026-10-12, before any H2 or H4 run):** sleeve returns come from each sleeve's own primary backtest, including interest on its idle cash, and each sleeve trades only its own universe; the SPY core uses buy-and-hold returns; each rebalance uses only returns from earlier days and happens before that day's return is applied; the 5 basis point cost applies to the traded amount, including the initial allocation from cash; if a sleeve had zero volatility over the 252-day window, the satellite is split equally.
 - **Config hash at pre-registration:** `524acb2a255e` (backend/app/research/hypotheses/h4.py)
-- **Development result:** (to be filled in)
-- **Out-of-sample result:** (to be filled in)
-- **Decision:** (to be filled in)
+- **Development result:** FAIL. [Full report](results/H4-development.md) | commit `c4d204e4b296` | data `ad3e31c528ae` | config `524acb2a255e`
+- **Development reason:** Passed three of four criteria: Sharpe 0.42 vs 0.41, max drawdown -34.88% vs -51.88% (67% of SPY's), and both robustness mixes at least as good as SPY. Failed the sub-period test with the same pattern as H2 (better in 2008-2012, slightly worse after). Correlation to SPY was 0.99, and the result is almost the same as simply holding about 67% SPY and 33% cash, which keeps SPY's Sharpe and scales its drawdown to about -34.8%. The sleeves cut drawdowns mostly by taking money out of stocks, not by adding a separate source of return.
+- **Out-of-sample result:** not run, because it failed development.
+- **Decision:** FAIL. Not promoted to paper trading; weights and sleeves will not be adjusted.
+- **Lessons for future portfolio hypotheses (recorded 2026-10-12, before any new hypothesis is written):** compare against SPY plus cash at the same volatility, not 100% SPY, because holding less stock alone reduces drawdowns; and allocate sleeves by risk rather than by dollars, since a calm sleeve at a large dollar weight still carries little of the portfolio's risk.

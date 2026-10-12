@@ -574,3 +574,39 @@ My notes on what I built at each step, why I built it that way, what broke, and 
 **Commits:** `Measure profit concentration on total P&L including open positions for new hypotheses`, `Add Wilder RSI and mean reversion strategy; record H3 implementation details before any data run`, `Add satellite criteria, H3 config and evaluation path; record H3 config hash before any run`, `Record H3 development result: FAIL`
 
 **Things I can talk about in interviews:** Why Sharpe is roughly independent of capital deployed, why different strategy types need different criteria, freezing evaluation code so recorded results stay reproducible, how many-trade results are more trustworthy than few-trade results, and why I didn't add new tests after seeing a failure.
+
+---
+
+## Entry 20: H2 and H4, portfolios with a stock core
+**Date:** Oct 12, 2026
+
+**What I built:** A return-level portfolio simulator: a fixed SPY core plus sleeves, rebalanced on the first trading day of each month using only earlier data, with sleeves split by inverse volatility over the past 252 days and a 5 basis point cost on every rebalance trade. Portfolio criteria and a judge function that compares against SPY. Configs for H2 and H4 that pin the exact config hashes of the sleeves they use, so the evaluator refuses to run if a sleeve ever changes. The command blocks a locked-period run for these portfolios, since their out-of-sample test was pre-registered as forward paper trading.
+
+**Tech:** Python, statistics, pytest, content hashing
+
+**Why this matters in finance:** For real money, the question isn't whether a strategy works alone but whether adding it improves what you'd hold anyway. That's how portfolio managers evaluate new strategies.
+
+**Decisions I made:**
+- Made each sleeve trade only its own universe. Without that, the mean reversion sleeve would have quietly traded bonds and commodities it was never tested on.
+- Pinned sleeve config hashes inside the portfolio configs, and printed each sleeve's Sharpe during the run so I could confirm it matched the recorded result (0.40 and 0.24).
+- Recorded implementation details (rebalance timing, costs on the initial allocation, a zero-volatility fallback) before running.
+
+**Problems I ran into:**
+- Started the evaluation from the repo root instead of backend, so Python couldn't find the app package.
+- H4's run refused to start because H2's run had just written uncommitted results files. That was the guard working, so I committed H2's results and ran H4 from clean code.
+
+**How I verified it:** 14 new tests, including a hand-calculated rebalance with costs, inverse-volatility weights (calm sleeve 2/3, volatile sleeve 1/3), the zero-volatility and short-history fallbacks, each portfolio criterion failing on its own, and sleeve hash pinning. 185 tests passing.
+
+**Results:**
+- H2 (70% SPY, 30% trend) failed: Sharpe 0.43 vs 0.41, max drawdown -40.1% vs -51.9%, correlation 0.99, but only 1 of 3 sub-periods at least as good as SPY.
+- H4 (60% SPY, 40% split between trend and mean reversion) failed the same way: Sharpe 0.42 vs 0.41, max drawdown -34.9% (67% of SPY's), correlation 0.99, 1 of 3 sub-periods.
+
+**What I learned:**
+- H4 almost exactly matches just holding about 67% SPY and 33% cash, which keeps SPY's Sharpe and cuts its drawdown to about -34.8%. The sleeves reduced risk mostly by taking money out of stocks, not by adding a separate return.
+- A calm sleeve at 30% of the money carries far less than 30% of the risk. Allocate by risk, not dollars.
+- Beating 100% SPY on drawdown is too easy a bar. Future portfolio tests should compare against SPY plus cash at the same volatility.
+- After four pre-registered hypotheses, nothing beats a plain index fund at a chosen level of risk. That's what this process is for: finding that out before real money is involved.
+
+**Commits:** `Add portfolio combiner and criteria, H2 and H4 configs pinned to tested sleeves; record hashes before any run`, `Add H2 development results`, `Record H2 and H4 development results: FAIL`
+
+**Things I can talk about in interviews:** Why mixing a strategy with cash leaves its Sharpe unchanged, why dollar weights aren't risk weights, risk-matched benchmarks, pinning dependencies by content hash, and how four honest failures led to a clear and useful conclusion.
