@@ -35,6 +35,7 @@ class BacktestOutput:
     trade_summary: TradeStats
     counts: dict[str, int]
     open_positions: dict[str, int]
+    open_pnl: dict[str, Decimal]
 
 
 def run_strategy_backtest(
@@ -99,6 +100,10 @@ def run_strategy_backtest(
         trade_summary=trade_stats(pf.trades),
         counts=dict(pipeline.counts),
         open_positions={s: p.quantity for s, p in pf.positions.items()},
+        open_pnl={
+            s: (p.market_price - p.avg_cost) * p.quantity + p.gross_pnl - p.commissions
+            for s, p in pf.positions.items()
+        },
     )
 
 
