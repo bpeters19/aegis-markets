@@ -1,0 +1,120 @@
+{
+  "hypothesis_id": "H2",
+  "title": "Stocks plus a trend-following sleeve",
+  "phase": "development",
+  "generated_at": "2026-10-12 15:41 UTC",
+  "commit": "6409593d3496",
+  "data_hash": "ad3e31c528ae",
+  "config_hash": "6906a411ffa9",
+  "registered_config_hash": "6906a411ffa9",
+  "holdout_unlocks": 1,
+  "run_ids": {
+    "sleeve H1": "e395c739"
+  },
+  "period_start": "2008-01-01",
+  "period_end": "2023-01-01",
+  "universe": [
+    "SPY",
+    "QQQ",
+    "IWM",
+    "EFA",
+    "EEM",
+    "VNQ",
+    "TLT",
+    "IEF",
+    "SHY",
+    "LQD",
+    "HYG",
+    "TIP",
+    "GLD",
+    "SLV",
+    "DBC",
+    "UUP"
+  ],
+  "benchmark_name": "SPY",
+  "cash_rate": "0.02",
+  "strategy": {
+    "total_return": 1.9673501770092434,
+    "cagr": 0.07526687319540426,
+    "volatility": 0.14988487623298924,
+    "sharpe": 0.4258602438355979,
+    "sortino": 0.5902556688841084,
+    "drawdown": {
+      "max_drawdown": -0.40099731012609263,
+      "peak": "2008-05-19",
+      "trough": "2009-03-09",
+      "recovered": "2011-01-03",
+      "duration_days": 662
+    },
+    "calmar": 0.18769919721340966
+  },
+  "benchmark": {
+    "total_return": 2.5059465530083886,
+    "cagr": 0.08729953253485956,
+    "volatility": 0.20747865072197266,
+    "sharpe": 0.41092870191756253,
+    "sortino": 0.5747499440337847,
+    "drawdown": {
+      "max_drawdown": -0.5188279315280941,
+      "peak": "2008-01-02",
+      "trough": "2009-03-09",
+      "recovered": "2011-04-27",
+      "duration_days": 836
+    },
+    "calmar": 0.16826297743403654
+  },
+  "correlation": 0.9943902062923503,
+  "average_exposure": null,
+  "closed_trades": 133,
+  "robustness": {
+    "80% SPY, 20% trend": 0.41942335289642035,
+    "60% SPY, 40% trend": 0.43400875646130177
+  },
+  "subperiods": [
+    {
+      "name": "2008-2012",
+      "strategy_sharpe": 0.14158672427849475,
+      "benchmark_sharpe": 0.11566163874433168
+    },
+    {
+      "name": "2013-2017",
+      "strategy_sharpe": 1.0626243521590637,
+      "benchmark_sharpe": 1.1199413223597945
+    },
+    {
+      "name": "2018-2022",
+      "strategy_sharpe": 0.4152562193512813,
+      "benchmark_sharpe": 0.4297343849549455
+    }
+  ],
+  "best_trade_share": null,
+  "top5_trade_share": null,
+  "criteria": [
+    {
+      "group": "required",
+      "name": "Sharpe ratio at least as high as benchmark",
+      "measured": "0.43 vs 0.41",
+      "passed": true
+    },
+    {
+      "group": "required",
+      "name": "Max drawdown no more than 80% of benchmark's",
+      "measured": "-40.10% vs -51.88% (77% of benchmark)",
+      "passed": true
+    },
+    {
+      "group": "required",
+      "name": "Sharpe at least as high as benchmark in at least 2 of 3 sub-periods",
+      "measured": "1 of 3",
+      "passed": false
+    },
+    {
+      "group": "required",
+      "name": "Every robustness variant has a Sharpe at least as high as benchmark",
+      "measured": "80% SPY, 20% trend 0.42, 60% SPY, 40% trend 0.43",
+      "passed": true
+    }
+  ],
+  "passed": false,
+  "concentration_basis": "not judged for portfolio hypotheses"
+}
