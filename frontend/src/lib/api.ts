@@ -7,6 +7,11 @@ export type BacktestResponse =
 export type SymbolInfo =
   paths["/api/v1/symbols"]["get"]["responses"][200]["content"]["application/json"][number];
 export type CurveMetrics = BacktestResponse["strategy"];
+export type PaperAccountSummary =
+  paths["/api/v1/paper/accounts"]["get"]["responses"][200]["content"]["application/json"][number];
+export type PaperAccountDetail =
+  paths["/api/v1/paper/accounts/{name}"]["get"]["responses"][200]["content"]["application/json"];
+export type PaperDay = PaperAccountDetail["days"][number];
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
@@ -42,4 +47,6 @@ export const api = {
   symbols: () => request<SymbolInfo[]>("/symbols"),
   runBacktest: (body: BacktestRequest) =>
     request<BacktestResponse>("/backtests", { method: "POST", body: JSON.stringify(body) }),
+  paperAccounts: () => request<PaperAccountSummary[]>("/paper/accounts"),
+  paperAccount: (name: string) => request<PaperAccountDetail>(`/paper/accounts/${encodeURIComponent(name)}`),
 };

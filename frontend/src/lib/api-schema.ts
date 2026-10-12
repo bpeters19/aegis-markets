@@ -89,6 +89,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/paper/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Accounts */
+        get: operations["list_accounts_api_v1_paper_accounts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/paper/accounts/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Account Detail */
+        get: operations["account_detail_api_v1_paper_accounts__name__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -282,6 +316,94 @@ export interface components {
              * Format: date-time
              */
             timestamp: string;
+        };
+        /** PaperAccountDetail */
+        PaperAccountDetail: {
+            /** Name */
+            name: string;
+            /** Hypothesis Id */
+            hypothesis_id: string;
+            /** Config Hash */
+            config_hash: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /** Capital */
+            capital: string;
+            /** Purpose */
+            purpose: string;
+            /** Days Recorded */
+            days_recorded: number;
+            /** Latest Day */
+            latest_day: string | null;
+            /** Latest Equity */
+            latest_equity: string | null;
+            /** Return Since Start */
+            return_since_start: number | null;
+            /** Open Positions */
+            open_positions: number;
+            /** Days */
+            days: components["schemas"]["PaperDayOut"][];
+        };
+        /** PaperAccountSummary */
+        PaperAccountSummary: {
+            /** Name */
+            name: string;
+            /** Hypothesis Id */
+            hypothesis_id: string;
+            /** Config Hash */
+            config_hash: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /** Capital */
+            capital: string;
+            /** Purpose */
+            purpose: string;
+            /** Days Recorded */
+            days_recorded: number;
+            /** Latest Day */
+            latest_day: string | null;
+            /** Latest Equity */
+            latest_equity: string | null;
+            /** Return Since Start */
+            return_since_start: number | null;
+            /** Open Positions */
+            open_positions: number;
+        };
+        /** PaperDayOut */
+        PaperDayOut: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Equity */
+            equity: string;
+            /** Cash */
+            cash: string;
+            /** Exposure */
+            exposure: number;
+            /** Positions */
+            positions: {
+                [key: string]: number;
+            };
+            /** Fills */
+            fills: {
+                [key: string]: unknown;
+            }[];
+            /** Working Orders */
+            working_orders: {
+                [key: string]: unknown;
+            }[];
+            /** Data Hash */
+            data_hash: string;
+            /** Code Commit */
+            code_commit: string;
         };
         /** ReadinessResponse */
         ReadinessResponse: {
@@ -510,6 +632,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BacktestResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_accounts_api_v1_paper_accounts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaperAccountSummary"][];
+                };
+            };
+        };
+    };
+    account_detail_api_v1_paper_accounts__name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaperAccountDetail"];
                 };
             };
             /** @description Validation Error */
