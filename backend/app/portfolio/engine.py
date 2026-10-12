@@ -65,6 +65,7 @@ class Portfolio:
         self.trades: list[ClosedTrade] = []
         self.equity_curve: list[tuple[date, Decimal]] = []
         self.exposure_curve: list[tuple[date, Decimal]] = []
+        self.daily_positions: list[tuple[date, Decimal, dict[str, int]]] = []
         self.start_of_day_equity = starting_cash
         self._day: date | None = None
 
@@ -96,6 +97,7 @@ class Portfolio:
             self.equity_curve.append((self._day, self.equity))
             exposure = self.market_value / self.equity if self.equity > 0 else Decimal(0)
             self.exposure_curve.append((self._day, exposure))
+            self.daily_positions.append((self._day, self.cash, {s: p.quantity for s, p in self.positions.items()}))
 
     def mark(self, bar: Bar) -> None:
         position = self.positions.get(bar.symbol)
