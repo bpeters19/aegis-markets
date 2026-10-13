@@ -610,3 +610,35 @@ My notes on what I built at each step, why I built it that way, what broke, and 
 **Commits:** `Add portfolio combiner and criteria, H2 and H4 configs pinned to tested sleeves; record hashes before any run`, `Add H2 development results`, `Record H2 and H4 development results: FAIL`
 
 **Things I can talk about in interviews:** Why mixing a strategy with cash leaves its Sharpe unchanged, why dollar weights aren't risk weights, risk-matched benchmarks, pinning dependencies by content hash, and how four honest failures led to a clear and useful conclusion.
+
+---
+
+## Entry 21: Live paper-trading loop
+**Date:** Oct 12-13, 2026
+
+**What I built:** Forward paper-trading accounts, each running one frozen strategy config from its start date. A daily runner fetches the latest bars, replays each account through the same engine my backtests use, checks every previously recorded day for drift, and appends only the new days to a ledger that a Postgres trigger makes append-only. Read-only API endpoints and a Paper trading page in the dashboard show each account's equity, positions, fills, queued orders, and ledger. A Windows scheduled task runs the runner every weekday at 5:30 PM Central and logs the output.
+
+**Tech:** Python, SQLAlchemy, PostgreSQL (JSONB, triggers), Alembic, FastAPI, Next.js, Windows Task Scheduler, PowerShell
+
+**Why this matters in finance:** A backtest only tests the past. Forward paper trading is the closest thing to a real test before risking money, and the batch job after the close (record the day, reconcile, report) is how trading operations actually run.
+
+**Decisions I made:**
+- Recompute state instead of storing it. Each day the runner replays the account from its start date, so cash, positions, strategy state, and volatility history never need save and load code. It's event sourcing: the market data is the log and the portfolio is derived from it.
+- Every run re-checks every recorded day against the replay. If anything differs (a vendor correction, a code change) it reports drift and writes nothing, instead of quietly rewriting history.
+- Only record a day after 6 PM New York time, so a half-finished trading day can never enter the permanent ledger.
+- Fixed warm-up interest exactly: the replay starts with capital / (1 + rate/252)^(warm-up days) so the account starts at its real capital instead of with a year of interest it never earned. Did it only in the paper replay so backtest results stay reproducible.
+- Every account stores its strategy's config hash and a stated purpose. These first two are labeled as infrastructure shakedowns since neither strategy earned promotion.
+- Missed runs catch up automatically on the next run, and the scheduled task starts as soon as possible if the laptop was off.
+- The runner refuses to record anything from uncommitted code and exits with an error code on drift, so a failure in a scheduled job shows up.
+
+**Problems I ran into:**
+- The dashboard said "Failed to fetch" because the backend had stopped. The page can only show what the API serves.
+- I committed from the backend folder, so git add only picked up backend files and the frontend changes were left out. I also hadn't regenerated the API types, which the production build would have caught. Now I run git status from the repo root before every commit.
+
+**How I verified it:** 15 new tests, including drift detection (equity changes, position changes, missing days, rounding noise), the append-only ledger refusing UPDATE and DELETE, the 6 PM cutoff, a replay that queues an order after the close and fills it at the next open, a determinism test (two replays must match exactly), and API tests using a rolled-back session. 205 tests passing (199 backend, 6 frontend).
+
+**Results:** The first daytime run correctly recorded nothing because no complete day existed yet. The first scheduled evening run recorded Oct 12 for both accounts at $100,007.94, exactly one day of 2% interest on $100,000, with no positions or orders, which matches what both strategies should do on that day.
+
+**Commits:** `Add paper accounts and an append-only daily ledger with drift detection`, `Add daily paper-trading runner with replay, drift detection and complete-day cutoff`, `Add paper trading API and dashboard page with ledger, positions, fills and queued orders`, `Add paper trading dashboard page with generated API types`, `Add paper-run wrapper script with logging; ignore logs`, `Update README with research results, paper trading and dashboard`
+
+**Things I can talk about in interviews:** Event sourcing and why recomputing state can be safer than storing it, drift detection as a form of reconciliation, append-only ledgers, idempotent catch-up for batch jobs, separating the system that records from the systems that report, and why a scheduled job needs logs and exit codes.
