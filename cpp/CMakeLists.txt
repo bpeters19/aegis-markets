@@ -14,7 +14,7 @@ function(aegis_strict_warnings target)
     endif()
 endfunction()
 
-add_library(aegis_core src/price.cpp)
+add_library(aegis_core src/price.cpp src/order_book.cpp)
 target_include_directories(aegis_core PUBLIC include)
 aegis_strict_warnings(aegis_core)
 
@@ -30,8 +30,9 @@ set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 enable_testing()
-add_executable(aegis_tests tests/test_price.cpp)
+add_executable(aegis_tests tests/test_price.cpp tests/test_order_book.cpp)
 target_link_libraries(aegis_tests PRIVATE aegis_core GTest::gtest_main)
 aegis_strict_warnings(aegis_tests)
 include(GoogleTest)
 gtest_discover_tests(aegis_tests)
+
