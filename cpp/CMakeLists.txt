@@ -36,3 +36,12 @@ aegis_strict_warnings(aegis_tests)
 include(GoogleTest)
 gtest_discover_tests(aegis_tests)
 
+
+# Tools: replay (differential testing against the Python reference) and benchmark.
+add_executable(aegis_replay apps/replay.cpp)
+target_link_libraries(aegis_replay PRIVATE aegis_core)
+aegis_strict_warnings(aegis_replay)
+
+add_executable(aegis_bench apps/bench.cpp)
+target_link_libraries(aegis_bench PRIVATE aegis_core)
+aegis_strict_warnings(aegis_bench)

@@ -92,3 +92,6 @@ jobs:
 
       - name: Test
         run: ctest --test-dir cpp/build --output-on-failure
+
+      - name: Differential test against the Python reference
+        run: python3 cpp/tools/differential.py --replay cpp/build/aegis_replay --count 200000 --seed 42
