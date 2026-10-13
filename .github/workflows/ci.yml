@@ -78,3 +78,17 @@ jobs:
 
       - name: Build (includes type checking)
         run: npm run build
+
+  cpp:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Configure (GCC)
+        run: cmake -S cpp -B cpp/build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build (warnings are errors)
+        run: cmake --build cpp/build
+
+      - name: Test
+        run: ctest --test-dir cpp/build --output-on-failure
